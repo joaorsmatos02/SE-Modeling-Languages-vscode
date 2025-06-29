@@ -1,0 +1,12 @@
+{
+    "patterns": [
+        { "include": "source.csml" },
+        {
+        "name": "keyword.mcml",
+        "match": "\\b(superkeyword|meta)\\b"
+      }
+    ],
+    "repository": {},
+    "scopeName": "source.mcml"
+  }
+  

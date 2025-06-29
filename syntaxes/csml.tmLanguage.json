@@ -1,0 +1,142 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Concretization and Simbolization Modeling Language",
+	"patterns": [
+	  {
+		"name": "comment.double.slash.csml",
+		"match": "//.*$"
+	  },
+	  {
+		"name": "constant.numeric",
+		"match": "\\b0[xX][0-9a-fA-F]+\\b|\\b\\d+(\\.\\d+)?\\b"
+	  },
+	  {
+		"include": "#csml"
+	  },
+	  {
+		"include": "#bap"
+	  }
+	],
+	"repository": {
+	  "csml": {
+		"patterns": [
+			{	
+			"name": "meta.match.csml",
+			"match": "(?<=::\\s*)<|>(?=\\s*::)",
+			"captures": {
+				"1": {
+				"name": "punctuation.match.csml"
+				},
+				"2": {
+				"name": "punctuation.match.csml"
+				}
+			}
+		  },
+		  {
+			"name": "keyword.default.csml",
+			"match": "\\bdefault\\b"
+		  },
+		  {
+			"name": "keyword.property.separator.csml",
+			"match": "::|->"
+		  },
+		  {
+			"name": "keyword.wildcard.csml",
+			"match": "(?<=::\\s*)\\*(?=\\s*::)|^\\s*\\*(?=\\s*::)|(?<=::\\s*)\\*(?=\\s*->)"
+		  },
+		  {
+			"name": "variable.metavar.csml",
+			"match": "\\?\\?|\\?[a-zA-Z]+"
+		  },
+		  {
+			"name": "variable.placeholder.csml",
+			"match": "!!|![a-zA-Z]+"
+		  },
+		  {
+			"name": "constant.language.verdict.simple.csml",
+			"match": "\\b[PSC]\\b"
+		  },
+		  {
+			"name": "constant.language.restrict.concretize.csml",
+			"match": "\\b(min|max|avg)\\b"
+		  },
+		  {
+			"name": "keyword.operator.subterm.csml",
+			"match": "=<|-<"
+		  }
+		]
+	  },
+	  "bap": {
+		"patterns": [
+			{
+			"name": "keyword.instructions.bap",
+			"match": "\\b(?:jmp|cpuexn|special|while|if|else)\\b"
+			},
+			{
+			"name": "keyword.expressions.bap",
+			"match": "\\b(?:with|let|in|unknown|ite|extract)\\b|@"
+			},
+		  {
+			"name": "keyword.operator.assign.bap",
+			"match": ":="
+		  },
+		  {
+			"name": "punctuation.bap",
+			"match": ",|(?<!:):(?!:)|<-"
+		  },
+		  {
+			"name": "variable.register.csml",
+			"match": "\\b(?:RAX|RBX|RCX|RDX|RSI|RDI|RSP|RBP|R8|R9|R10|R11|R12|R13|R14|R15|EAX|EBX|ECX|EDX|ESI|EDI|ESP|EBP|R8D|R9D|R10D|R11D|R12D|R13D|R14D|R15D|Mem)\\b"
+		  },		  
+		  {
+			"name": "meta.storage.type.csml",
+			"match": "(imm|mem)(<)(0[xX][0-9a-fA-F]+\\b|\\b\\d+(\\.\\d+)?)(>)",
+			"captures": {
+			  "1": {
+				"name": "storage.type.bap"
+			  },
+			  "2": {
+				"name": "punctuation.type.csml"
+			  },
+			  "3": {
+				"name": "constant.numeric"
+			  },
+			  "5": {
+				"name": "punctuation.type.csml"
+			  }
+			}
+		  },
+		  {
+			"name": "keyword.endian.bap",
+			"match": "\\ble\\b|\\bbe\\b"
+		  },
+		  {
+			"name": "keyword.operator.cast.bap",
+			"match": "low|high|signed|unsigned"
+		  },
+		  {
+			"name": "keyword.operator.arithmetic.bap",
+			"match": "s/|s%|\\+|-|\\*|/|%"
+		  },
+		  {
+			"name": "keyword.operator.bitwise.bap",
+			"match": "&|\\||\\bxor\\b"
+		  },
+		  {
+			"name": "keyword.operator.shift.bap",
+			"match": ">>>|<<|>>"
+		  },
+		  {
+			"name": "keyword.operator.comparison.bap",
+			"match": "/=|<=|s<|s<=|=|<"
+		  },
+		  {
+			"name": "keyword.operator.unary.bap",
+			"match": "--|~"
+		  }
+		]
+	  }
+	},
+	"scopeName": "source.csml"
+  }
+  
