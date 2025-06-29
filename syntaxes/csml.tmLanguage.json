@@ -63,6 +63,10 @@
 		  {
 			"name": "keyword.operator.subterm.csml",
 			"match": "=<|-<"
+		  },
+		  {
+			"name": "entity.name.function.csml",
+			"match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b(?=\\s*\\()"
 		  }
 		]
 	  },
@@ -74,7 +78,7 @@
 			},
 			{
 			"name": "keyword.expressions.bap",
-			"match": "\\b(?:with|let|in|unknown|ite|extract)\\b|@"
+			"match": "\\b(?:with|let|in|unknown|ite|extract|@)\\b"
 			},
 		  {
 			"name": "keyword.operator.assign.bap",

@@ -1,12 +1,38 @@
 {
+    "name": "Merge Conditions Modeling Language",
     "patterns": [
-        { "include": "source.csml" },
-        {
-        "name": "keyword.mcml",
-        "match": "\\b(superkeyword|meta)\\b"
-      }
+      {
+      "include": "#mcml"
+      },
+      { "include": "source.csml" }
     ],
-    "repository": {},
+    "repository": {
+      "mcml": {
+        "patterns":[
+          {
+            "name": "support.function.mcml",
+            "match": "\\bpattern\\b"
+          },
+          {
+            "name": "entity.name.function.mcml",
+            "match": "(?<=\\bpattern\\s+)\\w+(?=\\s*[:(])"
+          },
+          {
+            "name": "variable.language.mcml",
+            "match": "\\bmc\\b"
+          },
+          {
+            "name": "variable.metavar.mcml",
+            "match": "\\?\\?|\\?[a-zA-Z]+\\d*"
+          },
+          {
+            "name": "variable.placeholder.mcml",
+            "match": "!!|![a-zA-Z]+\\d*"
+          }
+          
+        ]
+      }
+    },
     "scopeName": "source.mcml"
   }
   
