@@ -1,4 +1,4 @@
-# csml README
+# SE Modeling Languages Syntax Highlighter README
 
 This is the README for your extension "SE Modeling Languages Syntax Highlighter". After writing up a brief description, we recommend including the following sections.
 
