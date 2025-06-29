@@ -10,7 +10,7 @@
       "mcml": {
         "patterns":[
           {
-            "name": "support.function.mcml",
+            "name": "support.class.mcml",
             "match": "\\bpattern\\b"
           },
           {
