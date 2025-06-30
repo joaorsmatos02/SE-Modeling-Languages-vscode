@@ -34,11 +34,21 @@ function runLinter(document, diagnosticCollection) {
     }
 
     const diagnostics = issues.map(issue => {
-      const range = new vscode.Range(issue.line, issue.column, issue.line, issue.column + 1);
+      const range = new vscode.Range(
+        issue.line,
+        issue.column,
+        issue.line,
+        issue.column + (issue.length || 1)
+      );
       const severity = issue.severity === 1
         ? vscode.DiagnosticSeverity.Warning
         : vscode.DiagnosticSeverity.Error;
-      return new vscode.Diagnostic(range, issue.message, severity);
+
+      const diagnostic = new vscode.Diagnostic(range, issue.message, severity);
+      if (issue.code) {
+        diagnostic.code = issue.code;
+      }
+      return diagnostic;
     });
 
     diagnosticCollection.set(document.uri, diagnostics);
@@ -46,6 +56,36 @@ function runLinter(document, diagnosticCollection) {
 
   process.stdin.write(code);
   process.stdin.end();
+}
+
+class CsmlQuickFixProvider {
+  provideCodeActions(document, range, context) {
+    const actions = [];
+
+    for (const diagnostic of context.diagnostics) {
+      // Quick fix: P[1] → C
+      if (diagnostic.code === 'replace-with-C') {
+        const fix = new vscode.CodeAction("Replace with 'C'", vscode.CodeActionKind.QuickFix);
+        fix.edit = new vscode.WorkspaceEdit();
+        fix.edit.replace(document.uri, diagnostic.range, 'C');
+        fix.diagnostics = [diagnostic];
+        fix.isPreferred = true;
+        actions.push(fix);
+      }
+
+      // Quick fix: ?var → ??
+      else if (diagnostic.code === 'replace-with-??') {
+        const fix = new vscode.CodeAction("Replace with '??'", vscode.CodeActionKind.QuickFix);
+        fix.edit = new vscode.WorkspaceEdit();
+        fix.edit.replace(document.uri, diagnostic.range, '??');
+        fix.diagnostics = [diagnostic];
+        fix.isPreferred = true;
+        actions.push(fix);
+      }
+    }
+
+    return actions;
+  }
 }
 
 function activate(context) {
@@ -84,6 +124,17 @@ function activate(context) {
     if (!['csml', 'mcml'].includes(document.languageId)) return;
     runLinter(document, diagnosticCollection);
   });
+
+  // Register Quick Fix provider
+  context.subscriptions.push(
+    vscode.languages.registerCodeActionsProvider(
+      ['csml', 'mcml'],
+      new CsmlQuickFixProvider(),
+      {
+        providedCodeActionKinds: [vscode.CodeActionKind.QuickFix]
+      }
+    )
+  );
 }
 
 function deactivate() {}
