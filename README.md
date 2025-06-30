@@ -1,4 +1,4 @@
-# SE Syntax Highlighter
+# SE Modeling Languages Linting and Syntax Highlighting
 
 This Visual Studio Code extension provides syntax highlighting for the CSml and MCml symbolic execution DSLs. To use it, open a `.csml` or `.mcml` file and enjoy enhanced highlighting.
 
