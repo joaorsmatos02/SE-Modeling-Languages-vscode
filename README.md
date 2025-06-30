@@ -6,6 +6,6 @@ This Visual Studio Code extension provides syntax highlighting for the CSml and 
 
 Run `vsce package` on this folder, then:
 ```
-code --install-extension csml-syntax-0.1.0.vsix
+code --install-extension <generated-file>
 ```
 Requires `npm` and `vsce (npm install -g vsce)`.

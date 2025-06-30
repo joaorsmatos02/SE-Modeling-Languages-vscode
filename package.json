@@ -42,6 +42,7 @@
     ]
   },
   "main": "./extension.js",
+  "activationEvents": [],
   "scripts": {
     "lint": "echo No build step"
   }
