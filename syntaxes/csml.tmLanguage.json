@@ -78,7 +78,7 @@
 			},
 			{
 			"name": "keyword.expressions.bap",
-			"match": "\\b(?:with|let|in|unknown|ite|extract|@)\\b"
+			"match": "\\b(?:with|let|in|unknown|ite|extract|@|true|false)\\b"
 			},
 		  {
 			"name": "keyword.operator.assign.bap",

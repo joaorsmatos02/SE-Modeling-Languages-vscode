@@ -40,5 +40,9 @@
       "path": "./syntaxes/mcml.tmLanguage.json"
       }
     ]
+  },
+  "main": "./extension.js",
+  "scripts": {
+    "lint": "echo No build step"
   }
 }
