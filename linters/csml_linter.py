@@ -376,6 +376,19 @@ def lint_code(code):
     return issues
 
 if __name__ == "__main__":
-    code = sys.stdin.read()
-    issues = lint_code(code)
-    print(json.dumps(issues))
+    while True:
+        line = sys.stdin.readline()
+        if not line:
+            break  # EOF
+        try:
+            data = json.loads(line)
+            code = data.get("code", "")
+            issues = lint_code(code)
+            print(json.dumps(issues))
+            sys.stdout.flush()
+        except Exception as e:
+            # You can print to stderr for debugging
+            sys.stderr.write(f"Error: {str(e)}\n")
+            sys.stderr.flush()
+            print(json.dumps([]))
+            sys.stdout.flush()

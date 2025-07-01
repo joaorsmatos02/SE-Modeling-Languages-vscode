@@ -1,6 +1,6 @@
 const vscode = require('vscode');
-const { execFile } = require('child_process');
 const { execSync } = require('child_process');
+const { spawn } = require('child_process');
 const path = require('path');
 
 ////////////////// get python command //////////////////
@@ -24,7 +24,7 @@ const candidates = ['python3', 'python'] // try both commands
   .filter(Boolean);
 
 if (candidates.length === 0) {
-  throw new Error('Neither python3 nor python found on system.');
+  throw new Error('Linting is disabled. Neither python3 nor python found on system.');
 }
 
 candidates.sort((a, b) => {
@@ -35,36 +35,70 @@ candidates.sort((a, b) => {
 
 const pythonCmd = candidates[0].cmd;
 
-//////////////////////////////////////////////////////
+try {
+  execSync(`${pythonCmd} -c "import lark"`, { stdio: 'ignore' });
+} catch {
+  throw new Error(`Linting is disabled. The 'lark' module is not installed for ${pythonCmd}. Please run: ${pythonCmd} -m pip install lark`);
+}
 
-const debounceMap = new Map();
+////////////////// set up linting //////////////////
+
+const pythonProcesses = new Map(); // key: 'csml' | 'mcml', value: process object
+
+function startLinterProcess(language) {
+  const scriptName = language === 'csml' ? 'csml_linter.py' : 'mcml_linter.py';
+  const pythonScriptPath = path.join(__dirname, 'linters', scriptName);
+
+  const proc = spawn(pythonCmd, [pythonScriptPath], {
+    stdio: ['pipe', 'pipe', 'pipe']
+  });
+
+  proc.stderr.on('data', data => {
+    console.error(`[${language.toUpperCase()} stderr]`, data.toString());
+  });
+
+  return proc;
+}
+
+function getLinterProcess(language) {
+  if (!pythonProcesses.has(language)) {
+    pythonProcesses.set(language, startLinterProcess(language));
+  }
+  return pythonProcesses.get(language);
+}
+
+function lintWithPersistentProcess(language, code, callback) {
+  const proc = getLinterProcess(language);
+  const message = JSON.stringify({ code }) + '\n';
+
+  let output = '';
+
+  const onData = (data) => {
+    output += data.toString();
+    if (output.endsWith('\n')) {
+      proc.stdout.off('data', onData);
+      try {
+        const issues = JSON.parse(output.trim());
+        callback(null, issues);
+      } catch (e) {
+        callback(new Error('Invalid JSON from linter'));
+      }
+    }
+  };
+
+  proc.stdout.on('data', onData);
+  proc.stdin.write(message);
+}
 
 function runLinter(document, diagnosticCollection) {
   const language = document.languageId;
+  if (!['csml', 'mcml'].includes(language)) return;
+
   const code = document.getText();
 
-  let scriptName = null;
-  if (language === 'csml') {
-    scriptName = 'csml_linter.py';
-  } else if (language === 'mcml') {
-    scriptName = 'mcml_linter.py';
-  } else {
-    return; // Unsupported language
-  }
-
-  const pythonScriptPath = path.join(__dirname, "linters", scriptName);
-
-  const process = execFile(pythonCmd, [pythonScriptPath], (error, stdout, stderr) => {
-    if (error) {
-      console.error(`[${language.toUpperCase()}] Python error:\n`, stderr);
-      return;
-    }
-
-    let issues = [];
-    try {
-      issues = JSON.parse(stdout);
-    } catch (e) {
-      console.error('Invalid JSON from linter:', stdout);
+  lintWithPersistentProcess(language, code, (err, issues = []) => {
+    if (err) {
+      console.error(`[${language.toUpperCase()}] Linter error:`, err);
       return;
     }
 
@@ -88,12 +122,11 @@ function runLinter(document, diagnosticCollection) {
 
     diagnosticCollection.set(document.uri, diagnostics);
   });
-
-  process.stdin.write(code);
-  process.stdin.end();
 }
 
-function registerLinter(context) {
+const debounceMap = new Map();
+
+function registerLinters(context) {
   const diagnosticCollection = vscode.languages.createDiagnosticCollection('csml-mcml');
 
   // Lint on Save
@@ -129,7 +162,19 @@ function registerLinter(context) {
     if (!['csml', 'mcml'].includes(document.languageId)) return;
     runLinter(document, diagnosticCollection);
   });
+
+  // Lint on Tab Switch (Active Editor Change)
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor(editor => {
+      if (!editor) return;
+      const document = editor.document;
+      if (!['csml', 'mcml'].includes(document.languageId)) return;
+      runLinter(document, diagnosticCollection);
+    })
+);
 }
+
+////////////////// set up quick fixes //////////////////
 
 class CsmlQuickFixProvider {
   provideCodeActions(document, range, context) {
@@ -174,12 +219,18 @@ function registerQuickFixes(context) {
   );
 }
 
+////////////////// main //////////////////
+
 function activate(context) {
-  registerLinter(context)
+  registerLinters(context)
   registerQuickFixes(context)
 }
 
-function deactivate() {}
+function deactivate() {
+  for (const proc of pythonProcesses.values()) {
+    proc.stdin.end();
+  }
+}
 
 module.exports = {
   activate,
