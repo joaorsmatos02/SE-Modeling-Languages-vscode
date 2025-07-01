@@ -8,4 +8,4 @@ Run `vsce package` on this folder, then:
 ```
 code --install-extension <generated-file>
 ```
-Requires `npm` and `vsce (npm install -g vsce)`.
+Requires `npm` and `vsce` `(npm install -g vsce)`.

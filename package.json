@@ -1,6 +1,6 @@
 {
-  "name": "se-modeling-syntax-highlighter",
-  "displayName": "SE Modeling Languages Syntax Highlighter",
+  "name": "se-modeling-languages",
+  "displayName": "SE Modeling Languages",
   "description": "",
   "version": "0.0.1",
   "engines": {
