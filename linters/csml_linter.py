@@ -316,35 +316,36 @@ def check_semantics(rule):
     if len(predicates) > 3: # check if its not default
         previous_len = len(predicates[0]) + len(predicates[1]) + 4
         expr_pattern = predicates[2]
-        subterms = re.split(r'(?:=<|-<)', expr_pattern)
-        if re.search(r'\?([a-zA-Z]+|\?)', subterms[-1]): # error, rightmost subterm cant have metavars
-            issues.append({
-                'column': previous_len + len(predicates[2]) - len(subterms[-1].rstrip()),
-                'message': f"The rightmost subterm can't have metavars.",
-                'severity': 2,  # error
-                'length': len(subterms[-1].strip()),
-            })
-        for term in subterms[:-1]:
-            term = term.strip()
-            if re.match(r'\?([a-zA-Z]+|\?)', term): # error, no term can simply be a metavar
+        if "=<" in expr_pattern or "-<" in expr_pattern:
+            subterms = re.split(r'(?:=<|-<)', expr_pattern)
+            if re.search(r'\?([a-zA-Z]+|\?)', subterms[-1]): # error, rightmost subterm cant have metavars
                 issues.append({
-                    'column': previous_len + predicates[2].find(term),
-                    'message': f"No term can simply consist of a metavar.",
+                    'column': previous_len + len(predicates[2]) - len(subterms[-1].rstrip()),
+                    'message': f"The rightmost subterm can't have metavars.",
                     'severity': 2,  # error
-                    'length': len(term),
+                    'length': len(subterms[-1].strip()),
                 })
+            for term in subterms[:-1]:
+                term = term.strip()
+                if re.match(r'\?([a-zA-Z]+|\?)', term): # error, no term can simply be a metavar
+                    issues.append({
+                        'column': previous_len + predicates[2].find(term),
+                        'message': f"No term can simply consist of a metavar.",
+                        'severity': 2,  # error
+                        'length': len(term),
+                    })
 
     # check propagate
     propagate_pattern = re.compile(r'P\[(\d+)')
     for match in propagate_pattern.finditer(rule):
         value = int(match.group(1))
-        column = match.start() - code.rfind('\n', 0, match.start()) - 1
+        column = match.start()
         if value == 1:
             issues.append({
                 'column': column,
                 'message': "Propagation count is 1, consider using 'C' instead for clarity.",
                 'severity': 1,  # warning
-                'length': rule.rfind("]") + 1 - column,
+                'length': rule.rfind("]") + 1 - match.start(),
                 'code': 'replace-with-C'
             })
 
