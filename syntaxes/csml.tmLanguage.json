@@ -90,7 +90,7 @@
 		  },
 		  {
 			"name": "variable.register.csml",
-			"match": "\\b(?:RAX|RBX|RCX|RDX|RSI|RDI|RSP|RBP|R8|R9|R10|R11|R12|R13|R14|R15|EAX|EBX|ECX|EDX|ESI|EDI|ESP|EBP|R8D|R9D|R10D|R11D|R12D|R13D|R14D|R15D|Mem)\\b"
+			"match": "\\b(?:RAX|RBX|RCX|RDX|RSI|RDI|RSP|RBP|R8|R9|R10|R11|R12|R13|R14|R15|EAX|EBX|ECX|EDX|ESI|EDI|ESP|EBP|R8D|R9D|R10D|R11D|R12D|R13D|R14D|R15D|mem)\\b"
 		  },		  
 		  {
 			"name": "meta.storage.type.csml",
