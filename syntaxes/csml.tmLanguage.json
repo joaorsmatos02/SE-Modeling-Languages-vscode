@@ -45,14 +45,6 @@
 			"match": "(?<=::\\s*)\\*(?=\\s*::)|^\\s*\\*(?=\\s*::)|(?<=::\\s*)\\*(?=\\s*->)"
 		  },
 		  {
-			"name": "variable.metavar.csml",
-			"match": "\\?\\?|\\?[a-zA-Z]+"
-		  },
-		  {
-			"name": "variable.placeholder.csml",
-			"match": "!!|![a-zA-Z]+"
-		  },
-		  {
 			"name": "constant.language.verdict.simple.csml",
 			"match": "\\b[PSC]\\b"
 		  },
@@ -73,6 +65,14 @@
 	  "bap": {
 		"patterns": [
 			{
+			"name": "variable.metavar.bap",
+			"match": "\\?\\?|\\?[a-zA-Z]+"
+			},
+			{
+			"name": "variable.placeholder.bap",
+			"match": "!!|![a-zA-Z]+"
+			},
+			{
 			"name": "keyword.instructions.bap",
 			"match": "\\b(?:jmp|cpuexn|special|while|if|else)\\b"
 			},
@@ -89,25 +89,45 @@
 			"match": ",|(?<!:):(?!:)|<-"
 		  },		  
 		  {
-			"name": "meta.storage.type.csml",
-			"match": "(imm|mem)(<)(0[xX][0-9a-fA-F]+\\b|\\b\\d+(\\.\\d+)?)(>)",
-			"captures": {
-			  "1": {
-				"name": "storage.type.bap"
-			  },
-			  "2": {
-				"name": "punctuation.type.csml"
-			  },
-			  "3": {
-				"name": "constant.numeric"
-			  },
-			  "5": {
-				"name": "punctuation.type.csml"
+			"name": "meta.storage.type.imm.bap",
+			"begin": "(imm)(<)",
+			"beginCaptures": {
+			  "1": { "name": "storage.type.bap" },
+			  "2": { "name": "punctuation.definition.generic.begin.bap" }
+			},
+			"end": "(>)",
+			"endCaptures": {
+			  "1": { "name": "punctuation.definition.generic.end.bap" }
+			},
+			"patterns": [
+			  { "include": "#bap" },
+			  {
+				"name": "constant.numeric.bap",
+				"match": "\\b0[xX][0-9a-fA-F]+\\b|\\b\\d+(\\.\\d+)?\\b"
 			  }
-			}
+			]
 		  },
 		  {
-			"name": "variable.register.csml",
+			"name": "meta.storage.type.mem.bap",
+			"begin": "(mem)(<)",
+			"beginCaptures": {
+			  "1": { "name": "storage.type.bap" },
+			  "2": { "name": "punctuation.definition.generic.begin.bap" }
+			},
+			"end": "(>)",
+			"endCaptures": {
+			  "1": { "name": "punctuation.definition.generic.end.bap" }
+			},
+			"patterns": [
+			  { "include": "#bap" },
+			  {
+				"name": "constant.numeric.bap",
+				"match": "\\b0[xX][0-9a-fA-F]+\\b|\\b\\d+(\\.\\d+)?\\b"
+			  }
+			]
+		  },
+		  {
+			"name": "variable.register.bap",
 			"match": "\\b(?:RAX|RBX|RCX|RDX|RSI|RDI|RSP|RBP|R8|R9|R10|R11|R12|R13|R14|R15|EAX|EBX|ECX|EDX|ESI|EDI|ESP|EBP|R8D|R9D|R10D|R11D|R12D|R13D|R14D|R15D|mem)\\b"
 		  },
 		  {

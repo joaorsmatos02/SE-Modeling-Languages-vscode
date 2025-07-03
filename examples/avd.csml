@@ -1,0 +1,9 @@
+* :: <?a> :: (?? with [!!, ??] : ?? <- ??) =< !a :: * -> C // concretize store address
+* :: <?a> :: (?? [!!, ??] : ??) =< !a :: * -> P[100]       // consider up to 100 address possibilities when loading
+* :: <ESP:imm<0x20> := ?a> :: <!a> :: * -> P[2]            // consider up to 2 (min and max) values for ESP 
+* :: <RSP:imm<0x40> := ?a> :: <!a> :: * -> P[2]            // and RSP too
+default -> P                                               // propagate all else
+// when storing, AVD concretized the address to a single possible value
+// when loading a byte, AVD calculated the minimum and maximum possible address of the load. then, it considered (up to) 100 addresses in that range. for each of those 100 addresses, it would read its contents and store the pair address/content, until it had found 10 unique possible read values. it would stop and consider only those 10 pairs (through restrictions on z3)
+    // the load_byte function was only called by load, which also concretized addresses. this function considered up to 100 addresses (spaced out)
+// if the stack pointer is symbolic, the minimum maximum values are considered
