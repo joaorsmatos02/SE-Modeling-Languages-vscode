@@ -13,7 +13,7 @@
             "match": "\\bpattern\\b"
           },
           {
-            "name": "entity.name.function.mcml",
+            "name": "entity.name.pattern.mcml",
             "match": "(?<=\\bpattern\\s+)\\w+(?=\\s*[:(])"
           },
           {
