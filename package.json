@@ -30,6 +30,10 @@
     ],
     "grammars": [
       {
+        "scopeName": "source.bap",
+        "path": "./syntaxes/modified-bap-il.tmLanguage.json"
+      },
+      {
       "language": "csml",
       "scopeName": "source.csml",
       "path": "./syntaxes/csml.tmLanguage.json"

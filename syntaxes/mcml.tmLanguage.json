@@ -1,9 +1,8 @@
 {
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
     "name": "Merge Conditions Modeling Language",
     "patterns": [
-      {
-      "include": "#mcml"
-      },
+      { "include": "#mcml" },
       { "include": "source.csml" }
     ],
     "repository": {
