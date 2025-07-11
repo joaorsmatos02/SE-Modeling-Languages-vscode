@@ -34,6 +34,10 @@
         "path": "./syntaxes/modified-bap-il.tmLanguage.json"
       },
       {
+        "scopeName": "source.dsl",
+        "path": "./syntaxes/dsl.tmLanguage.json"
+      },
+      {
       "language": "csml",
       "scopeName": "source.csml",
       "path": "./syntaxes/csml.tmLanguage.json"

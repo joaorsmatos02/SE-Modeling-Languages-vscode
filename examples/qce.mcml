@@ -1,6 +1,6 @@
 // merge conditions modeling language
 
-mc := 0 // (merge condition) the bound score to determine a merge. verdict "Keep" is returned if the global score (static, from main, plus runtime) is more than mc, otherwise "Merge"
+mc := 0 // (merge condition) the bound score to determine a merge. verdict "Keep" is returned if the global score (static plus runtime) is more than mc, otherwise "Merge"
 
 // STATIC SECTION
 
@@ -11,12 +11,12 @@ pattern A(?c): // receives a metavar correspondence
 * :: <?i> :: depends_on(!i, !c) -> 1 // depends_on is a custom function, defined externally
 default -> 0
 
-pattern B():
+pattern B:
 default -> 1 
 
 // q is a built-in function that traverses subsequent instructions (how many and how?) and queries a specified pattern with each expression in them, returning the sum. the q function in the paper is no more than pattern matching and following the code
 pattern static: // static indicates the start; pass each expression (if there is an expression subterm defined) of the current instruction through this pattern
-* :: * :: < ??:imm<??> > :: q(A(!!)) < q(B()) -> !! -< ?H
+* :: * :: < ??:imm<??> > :: q(A(!!)) < q(B) -> !! >- ?H
 default -> 0 // add function property?
 // metavars matched in main remain available to use in the next section
 // the sum of values of the main is the static score
@@ -31,7 +31,7 @@ default -> 0 // add function property?
 
 pattern runtime:
 !n -< !H :: !c1 == !c2 :: * -> 0
-!n -< !H :: * :: is_sym(!c1) -> 0
+!n -< !H :: * :: is_sym(!c1) -> 0 // later add way to pass a memory to the function, if needed (another special placeholder)
 !n -< !H :: * :: is_sym(!c2) -> 0
 !n -< !H :: * :: * -> 1 // if there is a variable in H that differs between states and is concrete in both, then dont merge
 default -> 0

@@ -1,0 +1,55 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Domain-Specific Languages",
+	"patterns": [
+      { "include": "#dsl" }
+	],
+	"repository": {
+	  "dsl": {
+		"patterns": [
+            {
+            "name": "comment.double.slash.dsl",
+            "match": "//.*$"
+            },
+            {
+            "name": "constant.numeric",
+            "match": "\\b0[xX][0-9a-fA-F]+\\b|\\b\\d+(\\.\\d+)?\\b"
+            },
+			{	
+			"name": "meta.match.dsl",
+			"match": "(?<=::\\s*)<|>(?=\\s*::)",
+			"captures": {
+				"1": {
+				"name": "punctuation.match.dsl"
+				},
+				"2": {
+				"name": "punctuation.match.dsl"
+				}
+			}
+		  },
+		  {
+			"name": "keyword.default.dsl",
+			"match": "\\bdefault\\b"
+		  },
+		  {
+			"name": "keyword.property.separator.dsl",
+			"match": "::|->"
+		  },
+		  {
+			"name": "keyword.wildcard.dsl",
+			"match": "(?<=::\\s*)\\*(?=\\s*::)|^\\s*\\*(?=\\s*::)|(?<=::\\s*)\\*(?=\\s*->)"
+		  },
+		  {
+			"name": "keyword.operator.subterm.dsl",
+			"match": "=<|-<"
+		  },
+		  {
+			"name": "entity.name.function.dsl",
+			"match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b(?=\\s*\\()"
+		  }
+		]
+	  }
+	},
+	"scopeName": "source.dsl"
+  }
+  

@@ -3,7 +3,8 @@
     "name": "Merge Conditions Modeling Language",
     "patterns": [
       { "include": "#mcml" },
-      { "include": "source.csml" }
+	    { "include": "source.dsl" },
+      { "include": "source.bap" }
     ],
     "repository": {
       "mcml": {
@@ -13,22 +14,25 @@
             "match": "\\bpattern\\b"
           },
           {
-            "name": "entity.name.pattern.mcml",
+            "name": "entity.name.function.pattern.def.mcml",
             "match": "(?<=\\bpattern\\s+)\\w+(?=\\s*[:(])"
+          },
+          {
+            "name": "entity.name.function.pattern.call.mcml",
+            "match": "(?<=\\bq\\()\\s*\\b(\\w+)\\b(?!\\s*\\()"
           },
           {
             "name": "variable.language.mcml",
             "match": "\\bmc\\b"
           },
           {
-            "name": "variable.metavar.mcml",
-            "match": "\\?\\?|\\?[a-zA-Z]+\\d*"
+            "name": "keyword.operator.save.dsl",
+            "match": ">-"
           },
           {
-            "name": "variable.placeholder.mcml",
-            "match": "!!|![a-zA-Z]+\\d*"
+            "name": "keyword.operator.equals.dsl",
+            "match": "=="
           }
-          
         ]
       }
     },

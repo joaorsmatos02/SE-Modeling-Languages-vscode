@@ -2,44 +2,13 @@
 	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
 	"name": "Concretization and Simbolization Modeling Language",
 	"patterns": [
-	  {
-		"name": "comment.double.slash.csml",
-		"match": "//.*$"
-	  },
-	  {
-		"name": "constant.numeric",
-		"match": "\\b0[xX][0-9a-fA-F]+\\b|\\b\\d+(\\.\\d+)?\\b"
-	  },
 	  { "include": "#csml" },
+	  { "include": "source.dsl" },
 	  { "include": "source.bap" }
 	],
 	"repository": {
 	  "csml": {
 		"patterns": [
-			{	
-			"name": "meta.match.csml",
-			"match": "(?<=::\\s*)<|>(?=\\s*::)",
-			"captures": {
-				"1": {
-				"name": "punctuation.match.csml"
-				},
-				"2": {
-				"name": "punctuation.match.csml"
-				}
-			}
-		  },
-		  {
-			"name": "keyword.default.csml",
-			"match": "\\bdefault\\b"
-		  },
-		  {
-			"name": "keyword.property.separator.csml",
-			"match": "::|->"
-		  },
-		  {
-			"name": "keyword.wildcard.csml",
-			"match": "(?<=::\\s*)\\*(?=\\s*::)|^\\s*\\*(?=\\s*::)|(?<=::\\s*)\\*(?=\\s*->)"
-		  },
 		  {
 			"name": "constant.language.verdict.simple.csml",
 			"match": "\\b[PSC]\\b"
@@ -47,14 +16,6 @@
 		  {
 			"name": "constant.language.restrict.concretize.csml",
 			"match": "\\b(min|max|avg)\\b"
-		  },
-		  {
-			"name": "keyword.operator.subterm.csml",
-			"match": "=<|-<"
-		  },
-		  {
-			"name": "entity.name.function.csml",
-			"match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b(?=\\s*\\()"
 		  }
 		]
 	  }

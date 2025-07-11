@@ -9,11 +9,11 @@
 		"patterns": [
 			{
 			"name": "variable.metavar.bap",
-			"match": "\\?\\?|\\?[a-zA-Z]+"
+			"match": "\\?\\?|\\?[a-zA-Z]+\\d*"
 			},
 			{
 			"name": "variable.placeholder.bap",
-			"match": "!!|![a-zA-Z]+"
+			"match": "!!|![a-zA-Z]+\\d*"
 			},
 			{
 			"name": "keyword.instructions.bap",
