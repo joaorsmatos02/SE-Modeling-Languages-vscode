@@ -1,0 +1,21 @@
+pattern x(?y):
+* :: <!y> :: * -> 1
+default -> 0
+
+pattern y(?x, ?y):
+* :: * :: <!x> :: * -> 1
+* :: * :: !y =< !! :: * -> 1
+default -> 0
+
+pattern x:
+default -> 0
+
+pattern static:
+* :: * :: * :: * -> q(bdtw)
+default -> q(   y(!!))
+
+mc:=4
+mc:=  5
+
+pattern runtime:
+default -> 0

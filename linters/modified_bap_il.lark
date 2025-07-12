@@ -1,8 +1,8 @@
 metavar: named_meta | anonymous // when matched become available to ALL subsequent terms through placeholders
-named_meta: /[?][a-zA-Z]+/
+named_meta: /[?][a-zA-Z_][a-zA-Z0-9_]*/
 anonymous: "??"
 placeholder: named_place | distinguished
-named_place: /[!][a-zA-Z]+/
+named_place: /[!][a-zA-Z_][a-zA-Z0-9_]*/
 distinguished: "!!"
 
 // bil_preface
@@ -22,21 +22,46 @@ string: "\"" /[^"]+/ "\""
 // bil_with_metavars
 
 bil_metavars: stmt_metavars ";" | stmt_metavars ";" bil_metavars | metavar
-stmt_metavars: assign | jump | cpuexn | special | while_ | if_ | if_else | metavar
+bil_metavars_placeholders: stmt_metavars_placeholders ";" | stmt_metavars_placeholders ";" bil_metavars_placeholders | metavar | placeholder
+bil_placeholders: stmt_placeholders ";" | stmt_placeholders ";" bil_placeholders  | placeholder
 
-assign: var_metavars ":=" exp_metavars | metavar ":=" exp_metavars
-jump: "jmp" exp_metavars
-cpuexn: "cpuexn" "(" num_metavar ")"
-special: "special" "(" string_metavar ")"
-while_: "while" "(" exp_metavars ")" "{" bil_metavars "}"
-if_: "if" "(" exp_metavars ")" "{" bil_metavars "}"
-if_else: "if" "(" exp_metavars ")" "{" bil_metavars "}" "else" "{" bil_metavars "}"
+stmt_metavars: assign_metavars | jump_metavars | cpuexn_metavars | special_metavars | while_metavars | if_metavars | if_else_metavars | metavar
+stmt_metavars_placeholders: assign_metavars_placeholders | jump_metavars_placeholders | cpuexn_metavars_placeholders | special_metavars_placeholders | while_metavars_placeholders | if_metavars_placeholders | if_else_metavars_placeholders | metavar | placeholder
+stmt_placeholders: assign_placeholders | jump_placeholders | cpuexn_placeholders | special_placeholders | while_placeholders | if_placeholders | if_else_placeholders | placeholder
+
+assign_metavars: (var_metavars | metavar) ":=" exp_metavars
+assign_metavars_placeholders: (var_metavars_placeholders | metavar | placeholder) ":=" exp_metavars_placeholders
+assign_placeholders: (var_placeholders  | placeholder) ":=" exp_placeholders
+
+jump_metavars: "jmp" exp_metavars
+jump_metavars_placeholders: "jmp" exp_metavars_placeholders
+jump_placeholders: "jmp" exp_placeholders
+
+cpuexn_metavars: "cpuexn" "(" num_metavar ")"
+cpuexn_metavars_placeholders: "cpuexn" "(" num_metavar_placeholder ")"
+cpuexn_placeholders: "cpuexn" "(" num_placeholder ")"
+
+special_metavars: "special" "(" string_metavar ")"
+special_metavars_placeholders: "special" "(" string_metavar_placeholder ")"
+special_placeholders: "special" "(" string_placeholder ")"
+
+while_metavars: "while" "(" exp_metavars ")" "{" bil_metavars "}"
+while_metavars_placeholders: "while" "(" exp_metavars_placeholders ")" "{" bil_metavars_placeholders "}"
+while_placeholders: "while" "(" exp_placeholders ")" "{" bil_placeholders "}"
+
+if_metavars: "if" "(" exp_metavars ")" "{" bil_metavars "}"
+if_metavars_placeholders: "if" "(" exp_metavars_placeholders ")" "{" bil_metavars_placeholders "}"
+if_placeholders: "if" "(" exp_placeholders ")" "{" bil_placeholders "}"
+
+if_else_metavars: "if" "(" exp_metavars ")" "{" bil_metavars "}" "else" "{" bil_metavars "}"
+if_else_metavars_placeholders: "if" "(" exp_metavars_placeholders ")" "{" bil_metavars_placeholders "}" "else" "{" bil_metavars_placeholders "}"
+if_else_placeholders: "if" "(" exp_placeholders ")" "{" bil_placeholders "}" "else" "{" bil_placeholders "}"
 
 //bil_expressions (we have to use val instead of word and unknown because of lark collisions)
 
 exp_metavars: metavar | "(" exp_metavars ")" | var_metavars | val_metavars | load_metavars | store_metavars | exp_metavars bop exp_metavars | uop exp_metavars | cast_metavars | let_metavars | ite_metavars | extract_metavars | concat_metavars
 exp_metavars_placeholders: metavar | placeholder | "(" exp_metavars_placeholders ")" | var_metavars_placeholders | val_metavars_placeholders | load_metavars_placeholders | store_metavars_placeholders | exp_metavars_placeholders bop exp_metavars_placeholders | uop exp_metavars_placeholders | cast_metavars_placeholders | let_metavars_placeholders | ite_metavars_placeholders | extract_metavars_placeholders | concat_metavars_placeholders
-exp_placeholders: placeholder| "(" exp_placeholders ")" | var_placeholders | val_placeholders | load_placeholders | store_placeholders | exp_placeholders bop exp_placeholders | uop exp_placeholders | cast_placeholders | let_placeholders | ite_placeholders | extract_placeholders | concat_placeholders
+exp_placeholders: placeholder | "(" exp_placeholders ")" | var_placeholders | val_placeholders | load_placeholders | store_placeholders | exp_placeholders bop exp_placeholders | uop exp_placeholders | cast_placeholders | let_placeholders | ite_placeholders | extract_placeholders | concat_placeholders
 
 // mem_val represents the memory, our "mem" variable, only used internally in bil
 // mem_val: val "[" word "<-" val ":" num "]" 
@@ -80,9 +105,13 @@ concat_placeholders: exp_placeholders "@" exp_placeholders
 
 ///////////
 
-var_metavars: /[a-zA-Z_][a-zA-Z0-9_]*/ ":" type_metavars
-var_metavars_placeholders: /[a-zA-Z_][a-zA-Z0-9_]*/ ":" type_metavars_placeholders
-var_placeholders: /[a-zA-Z_][a-zA-Z0-9_]*/ ":" type_placeholders
+var_metavars: (var_name | metavar) ":" type_metavars
+var_metavars_placeholders: (var_name | metavar | placeholder) ":" type_metavars_placeholders
+var_placeholders: (var_name | placeholder) ":" type_placeholders
+var_name: DOLLAR_VAR | HASH_VAR | IDENTIFIER
+DOLLAR_VAR: /\$[a-zA-Z0-9_]+/
+HASH_VAR: /#[0-9]+/
+IDENTIFIER: /[a-zA-Z_][a-zA-Z0-9_]*/
 
 // bil_operators
 

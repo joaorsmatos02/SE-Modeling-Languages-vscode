@@ -1,0 +1,68 @@
+%import modified_bap_il (stmt_metavars_placeholders, stmt_placeholders, exp_placeholders, named_meta, placeholder, named_place, var_name)
+%import modified_bap_il (assign_placeholders, jump_placeholders, cpuexn_placeholders, special_placeholders, while_placeholders, if_placeholders, if_else_placeholders)
+
+%override stmt_placeholders: assign_placeholders // override the stmt_placeholders rule to remove placeholder and avoid collision with exp_placeholders
+                           | jump_placeholders
+                           | cpuexn_placeholders
+                           | special_placeholders
+                           | while_placeholders
+                           | if_placeholders
+                           | if_else_placeholders
+
+%import dsl (wildcard, loc, ins, expr, decimal, func)
+%import dsl.name -> func_name
+
+%import common.NEWLINE
+%import common.WS
+%ignore WS
+%ignore /\/\/.*/ // for comments
+
+policy: statement+ // TODO in semantic checks, we need to see if there is exactly 1 mc, 1 static and 1 runtime
+statement: mc
+         | pattern_static
+         | pattern_runtime
+         | pattern
+
+mc: "mc" ":=" decimal NEWLINE ?
+
+pattern: PATTERN_DECLARATION pattern_signature ":" NEWLINE pattern_rules
+pattern_static: PATTERN_DECLARATION "static" ":" NEWLINE static_rules
+pattern_runtime: PATTERN_DECLARATION "runtime" ":" NEWLINE runtime_rules
+PATTERN_DECLARATION: "pattern"
+pattern_signature: func_name ("(" pattern_args ")" | "(" ")")?
+pattern_args: named_meta ("," named_meta)* // metavars are a (modified) bap-il thing, but we need them here to pass as args
+
+pattern_rules: pattern_rule pattern_rules | default
+static_rules: static_rule static_rules | static_default
+runtime_rules: runtime_rule runtime_rules | runtime_default
+
+pattern_rule: loc "::" ins_placeholders ("::" expr)? "::" func "->" decimal NEWLINE
+ins_placeholders: "<" stmt_metavars_placeholders ">" | wildcard // special ins with placeholders, just for the aux patterns since they may receive args
+default: "default" "->" decimal NEWLINE?
+
+num_op: less | more | equals | diff // add more if needed
+str_op: equals | diff
+    less: "<"
+    more: ">"
+    equals: "=="
+    diff: "/="
+
+static_rule: loc "::" ins "::" expr "::" look_ahead "->" static_dec NEWLINE
+look_ahead: q_call num_op (q_call|decimal) | wildcard
+q_call: "q" "(" pattern_call ")"
+pattern_call: func_name ("(" pattern_call_args ")"  | "(" ")")?
+pattern_call_args: (stmt_placeholders | exp_placeholders) ("," (stmt_placeholders | exp_placeholders))*
+static_dec: save_in | q_call | decimal // add more if needed
+save_in: placeholder ">-" named_meta // saves the expression in the provided metavariable (should i use the actual subterm or just the symbol as a string?)
+static_default: "default" "->" static_dec NEWLINE?
+
+runtime_rule: name_op  "::" compare_contents "::" func "->" decimal NEWLINE
+name_op: is_in | compare_name | wildcard // add more if needed
+is_in: name_place "-<" named_place
+compare_name: name_place str_op var_name
+    name_place: "!n"
+compare_contents: content str_op content | wildcard // add more if needed (str_op because it does not really matter which is bigger, only that they are different)
+content: content_1 | content_2
+    content_1: "!c1"
+    content_2: "!c2"
+runtime_default: "default" "->" decimal NEWLINE?

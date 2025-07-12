@@ -1,0 +1,24 @@
+%import modified_bap_il (stmt_metavars, exp_metavars_placeholders, exp_placeholders)
+
+// shared grammar between csml and mcml
+
+wildcard: "*"
+
+loc: num | "[" num ".." num  "]" | wildcard
+
+// instructions correspond to BIL statements and can have metavars
+ins: "<" stmt_metavars ">" | wildcard
+
+// expressions are the building blocks of instructions and can have new metavars or placeholders (which replace the previous metavars)
+expr: "<" exp_metavars_placeholders ">" | subterm | strict_subterm | wildcard
+subterm: subterm "=<" exp_metavars_placeholders | strict_subterm "=<" exp_metavars_placeholders | exp_metavars_placeholders "=<" exp_metavars_placeholders
+strict_subterm: strict_subterm "-<" exp_metavars_placeholders | subterm "-<" exp_metavars_placeholders | exp_metavars_placeholders "-<" exp_metavars_placeholders
+// we allow mixed chains of subterms and strict subterms which can contain both metavars (both types) and placeholders (both types)
+
+// memory functions can have placeholders (which replace the previous metavars)
+func: name "(" exp_placeholders ("," exp_placeholders)* ")" | wildcard
+name: /[a-zA-Z_][a-zA-Z0-9_]*/
+
+num: hex | decimal
+    hex: /0x[0-9a-fA-F]+/
+    decimal: /\d+/

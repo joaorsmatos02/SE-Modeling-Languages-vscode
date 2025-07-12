@@ -81,7 +81,7 @@ function lintWithPersistentProcess(language, code, callback) {
         const issues = JSON.parse(output.trim());
         callback(null, issues);
       } catch (e) {
-        console.error("[CSML Linter] Invalid JSON received:\n", output);
+        console.error("[Linter] Invalid JSON received:\n", output);
       }
     }
   };
