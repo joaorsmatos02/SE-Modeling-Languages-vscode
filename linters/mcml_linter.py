@@ -4,9 +4,7 @@ import re
 import sys
 from lark import Lark, UnexpectedInput
 
-import re
-
-def check_semantics(policy):
+def check_semantics(policy): #TODO se houver uma regra so de wildcards dizer q o resto é unreachable - sugerir trocar por default e apagar o resto
     issues = []
 
     def get_line_column(pos):
@@ -90,7 +88,7 @@ def check_semantics(policy):
                 'column': col
             })
 
-    # --- Check for unused patterns ---
+    # --- Check for unused patterns --- TODO suggest deletion
     lines = policy.splitlines()
     called_patterns = {m.group(1) for m in pattern_call_matches}
     defined_patterns = {m.group(1) for m in pattern_def_matches}
@@ -159,7 +157,114 @@ def check_semantics(policy):
                     })
             i += 1
 
+    # --- Check usage of metavars and placeholders (akin to csml) ---
+    for pattern in pattern_def_matches:
+        if pattern.group(1) != 'runtime':
+            start, _ = get_line_column(pattern.start(1))
+            start += 1  # skip the pattern definition line
+            lines = policy.splitlines()
+
+            # extract args
+            param_str = pattern.group(2)
+            args = [arg.strip()[1:] for arg in param_str.split(',')] if param_str else []
+
+            end = start
+            while not "default" in lines[end]:
+                end += 1
+
+            used_placeholders = set()
+            for i in range(start, end):
+                line_placeholders, line_issues = check_semantics_2(lines[i], args)  # pass args to the function
+                used_placeholders.update(line_placeholders)
+                for issue in line_issues:
+                    issues.append({**issue, "line": i})
+            unused_args = set(args) - used_placeholders
+            for arg in unused_args: # check for unused args
+                issues.append({
+                    'message': f"Argument '{arg}' is defined but never used in the pattern.",
+                    'severity': 1,
+                    'line': start-1,
+                    'length': len(arg) + 1,  # include the "?" prefix
+                    'column': lines[start-1].find(f"?{arg}")
+                })
+
     return issues
+
+def check_semantics_2(rule, args):
+    """
+    ensures every named placeholder (!xyz) has a corresponding named metavar (?xyz) in a previous predicate (metavars can be reused in the same predicate)
+    if a metavar is unused, suggests replacing with ??
+    ignores '!!' and '??'
+
+    subterm checks (need to give some context in order to match it)
+        no term can simply be a metavar 
+        the rightmost subterm cant have metavars
+    """
+    issues = []
+    predicates = rule.split("::")
+
+    # check metavars and placeholders
+    variables_pattern = re.compile(r'[?!][a-zA-Z]+')
+    metavars = set()
+    placeholders = set()
+    for predicate in predicates:
+        variables = list(variables_pattern.finditer(predicate))
+        for match in reversed(variables):
+            symbol = match.group()
+            name = symbol[1:]
+            if symbol.startswith('?'): # is metavar
+                if name in args:  # if it's an argument, we treat it as a metavar
+                    issues.append({
+                        'column': rule.find(symbol),
+                        'message': f"Metavar ?{name} is received as an argument and is being redefined.",
+                        'severity': 1,
+                        'length': len(symbol)
+                    })
+                metavars.add(name)
+            else: # is placeholder
+                if name not in metavars and name not in args: # error, placeholder used before being defined
+                    issues.append({
+                        'column': rule.find(symbol),
+                        'message': f"Placeholder {symbol} is used before being defined.",
+                        'severity': 2,  # error
+                        'length': len(symbol)
+                    })
+                else:
+                    placeholders.add(name)
+    unused_metavars = metavars - placeholders
+    for var in unused_metavars:
+        issues.append({
+            'column': rule.find("?"+var),
+            'message': f"Metavar ?{var} is not used in a placeholder. Consider replacing it with an anonymous metavar.",
+            'severity': 1,  # warning
+            'length': 1+len(var),
+            'code': 'replace-with-??'
+        })
+
+    # check subterms
+    if len(predicates) > 3: # check if its not default and has expr
+        previous_len = len(predicates[0]) + len(predicates[1]) + 4
+        expr_pattern = predicates[2]
+        if "=<" in expr_pattern or "-<" in expr_pattern:
+            subterms = re.split(r'(?:=<|-<)', expr_pattern)
+            if re.search(r'\?([a-zA-Z]+|\?)', subterms[-1]): # error, rightmost subterm cant have metavars
+                issues.append({
+                    'column': previous_len + len(predicates[2]) - len(subterms[-1].rstrip()),
+                    'message': f"The rightmost subterm can't have metavars.",
+                    'severity': 2,  # error
+                    'length': len(subterms[-1].strip()),
+                })
+            for term in subterms[:-1]:
+                term = term.strip()
+                if re.match(r'\?([a-zA-Z]+|\?)', term): # error, no term can simply be a metavar
+                    issues.append({
+                        'column': previous_len + predicates[2].find(term),
+                        'message': f"No term can simply consist of a metavar.",
+                        'severity': 2,  # error
+                        'length': len(term),
+                    })
+    
+    return placeholders, issues
 
 def strip_comments(code):
     lines = code.splitlines()

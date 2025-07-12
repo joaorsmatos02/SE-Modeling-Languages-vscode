@@ -1,9 +1,9 @@
 pattern x(?y):
-* :: <!y> :: * -> 1
+* :: <!y> :: RAX:imm<0x20> -< !y :: * -> 1
 default -> 0
 
-pattern y(?x, ?y):
-* :: * :: <!x> :: * -> 1
+pattern y(?xdhth, ?y):
+* :: <?y> :: <!x> :: * -> 1
 * :: * :: !y =< !! :: * -> 1
 default -> 0
 
@@ -12,7 +12,7 @@ default -> 0
 
 pattern static:
 //* :: * :: * :: * -> !! >- ?t
-* :: * :: * :: * -> q(bdtw)
+* :: <??> :: * :: * -> q(bdtw)
 default -> q(   y(!!))
 
 mc:=4

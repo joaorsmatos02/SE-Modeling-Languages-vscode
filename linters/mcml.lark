@@ -23,7 +23,7 @@ statement: mc
          | pattern_runtime
          | pattern
 
-mc: "mc" ":=" decimal NEWLINE ?
+mc: "mc" ":=" decimal NEWLINE?
 
 pattern: PATTERN_DECLARATION pattern_signature ":" NEWLINE pattern_rules
 pattern_static: PATTERN_DECLARATION "static" ":" NEWLINE static_rules
@@ -32,11 +32,12 @@ PATTERN_DECLARATION: "pattern"
 pattern_signature: func_name ("(" pattern_args ")" | "(" ")")?
 pattern_args: named_meta ("," named_meta)* // metavars are a (modified) bap-il thing, but we need them here to pass as args
 
-pattern_rules: pattern_rule pattern_rules | default
-static_rules: static_rule static_rules | static_default
-runtime_rules: runtime_rule runtime_rules | runtime_default
+pattern_rules: (pattern_rule+ | pattern_expr_rule+)? default
+static_rules: static_rule* static_default
+runtime_rules: runtime_rule* runtime_default
 
-pattern_rule: loc "::" ins_placeholders ("::" expr)? "::" func "->" decimal NEWLINE
+pattern_rule: loc "::" ins_placeholders "::" func "->" decimal NEWLINE
+pattern_expr_rule: loc "::" ins_placeholders "::" expr "::" func "->" decimal NEWLINE
 ins_placeholders: "<" stmt_metavars_placeholders ">" | wildcard // special ins with placeholders, just for the aux patterns since they may receive args
 default: "default" "->" decimal NEWLINE?
 
