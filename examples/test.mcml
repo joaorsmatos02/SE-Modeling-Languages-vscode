@@ -11,6 +11,7 @@ pattern x:
 default -> 0
 
 pattern static:
+//* :: * :: * :: * -> !! >- ?t
 * :: * :: * :: * -> q(bdtw)
 default -> q(   y(!!))
 
@@ -18,4 +19,5 @@ mc:=4
 mc:=  5
 
 pattern runtime:
+!n -< !t :: * :: * -> 4
 default -> 0

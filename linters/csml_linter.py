@@ -89,6 +89,13 @@ def check_semantics(rule):
 
     return issues
 
+def strip_comments(code):
+    lines = code.splitlines()
+    return '\n'.join(
+        '' if line.strip().startswith('//') else line.split('//', 1)[0].rstrip()
+        for line in lines
+    )
+
 def lint_code(code):
     parser = Lark.open("csml.lark", start="policy", parser="lalr", import_paths=[os.path.dirname(__file__)], rel_to=__file__)
     issues = []
@@ -105,6 +112,7 @@ def lint_code(code):
         })
         return issues
 
+    code = strip_comments(code)
     rules = code.split("\n")
     for i in range(len(rules)):
         line_issues = check_semantics(rules[i])
