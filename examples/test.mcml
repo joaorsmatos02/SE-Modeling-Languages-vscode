@@ -11,7 +11,7 @@ pattern x:
 default -> 0
 
 pattern static:
-//* :: * :: * :: * -> !! >- ?t
+* :: * :: * :: * -> !! >- ?t
 * :: <??> :: * :: * -> q(bdtw)
 default -> q(   y(!!))
 

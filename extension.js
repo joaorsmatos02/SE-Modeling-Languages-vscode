@@ -181,25 +181,36 @@ class CsmlQuickFixProvider {
     const actions = [];
 
     for (const diagnostic of context.diagnostics) {
-      // Quick fix: P[1] -> C
-      if (diagnostic.code === 'replace-with-C') {
-        const fix = new vscode.CodeAction("Replace with 'C'", vscode.CodeActionKind.QuickFix);
-        fix.edit = new vscode.WorkspaceEdit();
-        fix.edit.replace(document.uri, diagnostic.range, 'C');
-        fix.diagnostics = [diagnostic];
-        fix.isPreferred = true;
-        actions.push(fix);
-      }
 
-      // Quick fix: ?unused -> ??
-      else if (diagnostic.code === 'replace-with-??') {
-        const fix = new vscode.CodeAction("Replace with '??'", vscode.CodeActionKind.QuickFix);
-        fix.edit = new vscode.WorkspaceEdit();
-        fix.edit.replace(document.uri, diagnostic.range, '??');
-        fix.diagnostics = [diagnostic];
-        fix.isPreferred = true;
-        actions.push(fix);
-      }
+        // Quick fix: P[1] -> C
+        if (diagnostic.code === 'replace-with-C') {
+          const fix = new vscode.CodeAction("Replace with 'C'", vscode.CodeActionKind.QuickFix);
+          fix.edit = new vscode.WorkspaceEdit();
+          fix.edit.replace(document.uri, diagnostic.range, 'C');
+          fix.diagnostics = [diagnostic];
+          fix.isPreferred = true;
+          actions.push(fix);
+        }
+  
+        // Quick fix: ?unused -> ??
+        else if (diagnostic.code === 'replace-with-??') {
+          const fix = new vscode.CodeAction("Replace with '??'", vscode.CodeActionKind.QuickFix);
+          fix.edit = new vscode.WorkspaceEdit();
+          fix.edit.replace(document.uri, diagnostic.range, '??');
+          fix.diagnostics = [diagnostic];
+          fix.isPreferred = true;
+          actions.push(fix);
+        }
+  
+        else if (diagnostic.code === 'universal-rule') {
+          const fix = new vscode.CodeAction("Replace with a default rule", vscode.CodeActionKind.QuickFix);
+          fix.edit = new vscode.WorkspaceEdit();
+          fix.edit.replace(document.uri, diagnostic.range, 'default');
+          fix.diagnostics = [diagnostic];
+          fix.isPreferred = true;
+          actions.push(fix);
+        }
+      
     }
 
     return actions;

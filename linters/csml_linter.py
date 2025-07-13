@@ -17,6 +17,17 @@ def check_semantics(rule):
     checks if propagation count is 1 and suggests switching to C in that case
     """
     issues = []
+    is_universal = re.search(r'\*\s*::\s*\*\s*::\s*\*\s*::\s*\*\s*->', rule)
+    if is_universal:
+        issues.append({
+            'column': 0,
+            'message': "Universal rule, consider replacing with default",
+            'severity': 1,  # warning
+            'length': len(rule.split("->")[0].rstrip()),
+            'code': 'universal-rule'
+        })
+        return issues
+    
     predicates = rule.split("::")
 
     # check metavars and placeholders

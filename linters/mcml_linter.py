@@ -24,35 +24,29 @@ def check_semantics(policy): #TODO se houver uma regra so de wildcards dizer q o
             })
         elif len(matches) > 1:
             lines = policy.splitlines(keepends=True)
-            char_count = 0
-            line_positions = []
-            for line in lines:
-                line_positions.append((char_count, char_count + len(line), line))
-                char_count += len(line)
-
             for match in matches[1:]:
-                pos = match.start()
-                for i, (start, end, line) in enumerate(line_positions):
-                    if start <= pos < end:
-                        issues.append({
-                            'message': f"Policy can only have one {label}.",
-                            'severity': 2,
-                            'line': i,
-                            'length': len(line.rstrip('\n')),
-                            'column': pos - start
-                        })
-                        break
+                line, _ = get_line_column(match.start())
+                issues.append({
+                    'message': f"Policy can only have one {label}.",
+                    'severity': 2,
+                    'line': line,
+                    'length': len(lines[line].rstrip()),
+                    'column': 0
+                })
 
     # --- Check core pattern declarations ---
-    check_single_occurrence(r'mc(\w*):=', 'MC value')
+    check_single_occurrence(r'mc(\s*):=', 'MC value')
     check_single_occurrence(r'\bstatic\b', 'static pattern')
     check_single_occurrence(r'\bruntime\b', 'runtime pattern')
 
     # --- Extract pattern definitions and validate uniqueness ---
     pattern_def_matches = list(re.finditer(r'\bpattern\s+(\w+)\s*(?:\((.*?)\))?\s*:', policy))
+    checked_patterns = set()
     for match in pattern_def_matches:
         pattern_name = match.group(1)
-        check_single_occurrence(rf'\bpattern\s+{re.escape(pattern_name)}\s*[:(]', f'pattern named {pattern_name}')
+        if pattern_name not in checked_patterns:
+            check_single_occurrence(rf'\bpattern\s+{re.escape(pattern_name)}\s*[:(]', f'pattern named {pattern_name}')
+            checked_patterns.add(pattern_name)
 
     # --- Check pattern calls for validity and argument count ---
     pattern_call_matches = list(re.finditer(r'q\(\s*(\w+)(?:\((.*?)\))?\s*\)', policy))
@@ -88,7 +82,7 @@ def check_semantics(policy): #TODO se houver uma regra so de wildcards dizer q o
                 'column': col
             })
 
-    # --- Check for unused patterns --- TODO suggest deletion
+    # --- Check for unused patterns ---
     lines = policy.splitlines()
     called_patterns = {m.group(1) for m in pattern_call_matches}
     defined_patterns = {m.group(1) for m in pattern_def_matches}
@@ -98,20 +92,13 @@ def check_semantics(policy): #TODO se houver uma regra so de wildcards dizer q o
         for def_match in pattern_def_matches:
             if def_match.group(1) == pattern:
                 start_line, _ = get_line_column(def_match.start(1))
-                end_line = start_line + 1
-                while end_line < len(lines) and not lines[end_line].lstrip().startswith("default"):
-                    end_line += 1
-                if end_line < len(lines):
-                    end_line += 1  # include default line
-
-                for i in range(start_line, end_line):
-                    issues.append({
-                        'message': f"Pattern '{pattern}' is defined but never called.",
-                        'severity': 1,
-                        'line': i,
-                        'length': len(lines[i].rstrip('\n')),
-                        'column': 0
-                    })
+                issues.append({
+                    'message': f"Pattern '{pattern}' is defined but never called.",
+                    'severity': 1,
+                    'line': start_line,
+                    'length': len(lines[start_line].rstrip()),
+                    'column': 0
+                })
                 break
 
     # --- Check reserved metavariables and runtime usage ---
@@ -162,7 +149,6 @@ def check_semantics(policy): #TODO se houver uma regra so de wildcards dizer q o
         if pattern.group(1) != 'runtime':
             start, _ = get_line_column(pattern.start(1))
             start += 1  # skip the pattern definition line
-            lines = policy.splitlines()
 
             # extract args
             param_str = pattern.group(2)
@@ -187,6 +173,20 @@ def check_semantics(policy): #TODO se houver uma regra so de wildcards dizer q o
                     'length': len(arg) + 1,  # include the "?" prefix
                     'column': lines[start-1].find(f"?{arg}")
                 })
+
+    # --- Check for universal rules ---
+    is_universal = list(re.finditer(r'\n\s*\*\s*::\s*\*\s*::\s*(\*\s*::\s*)?\*\s*->', policy))
+    for universal in is_universal:
+        line, _ = get_line_column(universal.start(1))
+        issues.append({
+            'message': "Universal rule, consider replacing with default",
+            'column': 0,
+            'severity': 1,  # warning
+            'line': line,
+            'length': len(lines[line].split("->")[0].rstrip()),
+            'code': 'universal-rule'
+        })
+        return issues
 
     return issues
 
