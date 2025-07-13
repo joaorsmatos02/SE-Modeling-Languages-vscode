@@ -17,6 +17,8 @@ def check_semantics(rule):
     checks if propagation count is 1 and suggests switching to C in that case
     """
     issues = []
+
+    # check if rule is universal (warning)
     is_universal = re.search(r'\*\s*::\s*\*\s*::\s*\*\s*::\s*\*\s*->', rule)
     if is_universal:
         issues.append({

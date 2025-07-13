@@ -4,8 +4,9 @@ import re
 import sys
 from lark import Lark, UnexpectedInput
 
-def check_semantics(policy): #TODO se houver uma regra so de wildcards dizer q o resto é unreachable - sugerir trocar por default e apagar o resto
+def check_semantics(policy):
     issues = []
+    lines = policy.splitlines()
 
     def get_line_column(pos):
         line = policy.count('\n', 0, pos)
@@ -34,6 +35,19 @@ def check_semantics(policy): #TODO se houver uma regra so de wildcards dizer q o
                     'column': 0
                 })
 
+    # --- Check for universal rules ---
+    is_universal = list(re.finditer(r'\n\s*\*\s*::\s*\*\s*::\s*(\*\s*::\s*)?\*\s*->', policy))
+    for universal in is_universal:
+        line, _ = get_line_column(universal.start(1))
+        issues.append({
+            'message': "Universal rule, consider replacing with default",
+            'column': 0,
+            'severity': 1,  # warning
+            'line': line,
+            'length': len(lines[line].split("->")[0].rstrip()),
+            'code': 'universal-rule'
+        })
+
     # --- Check core pattern declarations ---
     check_single_occurrence(r'mc(\s*):=', 'MC value')
     check_single_occurrence(r'\bstatic\b', 'static pattern')
@@ -54,12 +68,10 @@ def check_semantics(policy): #TODO se houver uma regra so de wildcards dizer q o
         func_name = call.group(1)
         args_str = call.group(2)
         call_line, col = get_line_column(call.start(1))
-
         arg_count = 0
         if args_str and args_str.strip():
             args = [arg.strip() for arg in args_str.split(',') if arg.strip()]
             arg_count = len(args)
-
         for def_match in pattern_def_matches:
             if def_match.group(1) == func_name:
                 param_str = def_match.group(2)
@@ -83,11 +95,9 @@ def check_semantics(policy): #TODO se houver uma regra so de wildcards dizer q o
             })
 
     # --- Check for unused patterns ---
-    lines = policy.splitlines()
     called_patterns = {m.group(1) for m in pattern_call_matches}
     defined_patterns = {m.group(1) for m in pattern_def_matches}
     unused = defined_patterns - called_patterns - {'static', 'runtime'}
-
     for pattern in unused:
         for def_match in pattern_def_matches:
             if def_match.group(1) == pattern:
@@ -104,11 +114,9 @@ def check_semantics(policy): #TODO se houver uma regra so de wildcards dizer q o
     # --- Check reserved metavariables and runtime usage ---
     static_match = next((m for m in pattern_def_matches if m.group(1) == 'static'), None)
     runtime_match = next((m for m in pattern_def_matches if m.group(1) == 'runtime'), None)
-
     if static_match and runtime_match:
         static_line, _ = get_line_column(static_match.start(1))
         runtime_line, _ = get_line_column(runtime_match.start(1))
-
         saved_placeholders = set()
         i = static_line + 1
         while i < len(lines) and "default" not in lines[i]:
@@ -127,7 +135,6 @@ def check_semantics(policy): #TODO se houver uma regra so de wildcards dizer q o
                 else:
                     saved_placeholders.add(meta[1:])  # strip "?"
             i += 1
-
         i = runtime_line + 1
         while i < len(lines) and "default" not in lines[i]:
             use = re.search(r'(\S+)\s+-<\s+(\S+)', lines[i])
@@ -149,18 +156,14 @@ def check_semantics(policy): #TODO se houver uma regra so de wildcards dizer q o
         if pattern.group(1) != 'runtime':
             start, _ = get_line_column(pattern.start(1))
             start += 1  # skip the pattern definition line
-
-            # extract args
             param_str = pattern.group(2)
             args = [arg.strip()[1:] for arg in param_str.split(',')] if param_str else []
-
             end = start
             while not "default" in lines[end]:
                 end += 1
-
             used_placeholders = set()
             for i in range(start, end):
-                line_placeholders, line_issues = check_semantics_2(lines[i], args)  # pass args to the function
+                line_placeholders, line_issues = check_line_semantics(lines[i], args)  # pass args to the function
                 used_placeholders.update(line_placeholders)
                 for issue in line_issues:
                     issues.append({**issue, "line": i})
@@ -174,32 +177,9 @@ def check_semantics(policy): #TODO se houver uma regra so de wildcards dizer q o
                     'column': lines[start-1].find(f"?{arg}")
                 })
 
-    # --- Check for universal rules ---
-    is_universal = list(re.finditer(r'\n\s*\*\s*::\s*\*\s*::\s*(\*\s*::\s*)?\*\s*->', policy))
-    for universal in is_universal:
-        line, _ = get_line_column(universal.start(1))
-        issues.append({
-            'message': "Universal rule, consider replacing with default",
-            'column': 0,
-            'severity': 1,  # warning
-            'line': line,
-            'length': len(lines[line].split("->")[0].rstrip()),
-            'code': 'universal-rule'
-        })
-        return issues
-
     return issues
 
-def check_semantics_2(rule, args):
-    """
-    ensures every named placeholder (!xyz) has a corresponding named metavar (?xyz) in a previous predicate (metavars can be reused in the same predicate)
-    if a metavar is unused, suggests replacing with ??
-    ignores '!!' and '??'
-
-    subterm checks (need to give some context in order to match it)
-        no term can simply be a metavar 
-        the rightmost subterm cant have metavars
-    """
+def check_line_semantics(rule, args):
     issues = []
     predicates = rule.split("::")
 
@@ -207,8 +187,10 @@ def check_semantics_2(rule, args):
     variables_pattern = re.compile(r'[?!][a-zA-Z]+')
     metavars = set()
     placeholders = set()
-    for predicate in predicates:
-        variables = list(variables_pattern.finditer(predicate))
+    for i in range(len(predicates)):
+        variables = list(variables_pattern.finditer(predicates[i]))
+        if i == len(predicates) - 1 and ">-" in predicates[i]:  # last predicate
+            variables = variables[:-1]  # ignore the last variable if it's a save operation
         for match in reversed(variables):
             symbol = match.group()
             name = symbol[1:]
