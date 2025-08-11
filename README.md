@@ -2,10 +2,13 @@
 
 This Visual Studio Code extension provides syntax highlighting for the CSml and MCml symbolic execution DSLs. To use it, open a `.csml` or `.mcml` file and enjoy enhanced highlighting.
 
+Will default to the most recent `python` installation found when being used.
+
 ## Installation
 
 Run `vsce package` on this folder, then:
 ```
 code --install-extension <generated-file>
 ```
-Requires `npm`, `python`, `vsce` `(npm install -g vsce)` and `lark` `(pip install lark)`. Will default to the most recent `python` installation found.
+Requires `npm`, `python`, `vsce` `(npm install -g vsce)` and `lark` `(pip install lark)` to build. 
+

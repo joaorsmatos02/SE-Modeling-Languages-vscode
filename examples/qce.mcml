@@ -7,16 +7,16 @@ mc := 0 // (merge condition) the bound score to determine a merge. verdict "Keep
 // location :: instruction :: expression? :: static_func
 // if the expression subterm is ommited then the pattern is only called once for each instruction (and location)
 
-pattern A(?c): // receives a metavar correspondence
+pattern add(?c): // receives a metavar correspondence
 * :: <?i> :: depends_on(!i, !c) -> 1 // depends_on is a custom function, defined externally
 default -> 0
 
-pattern B:
+pattern t:
 default -> 1 
 
 // q is a built-in function that traverses subsequent instructions (how many and how?) and queries a specified pattern with each expression in them, returning the sum. the q function in the paper is no more than pattern matching and following the code
 pattern static: // static indicates the start; pass each expression (if there is an expression subterm defined) of the current instruction through this pattern
-* :: * :: < ??:imm<??> > :: q(A(!!)) < q(B) -> !! >- ?H
+* :: * :: < ??:imm<??> > :: q(add(!!)) > 0.85 * q(t) -> !! >- ?H // alpha = 2
 default -> 0 // add function property?
 // metavars matched in main remain available to use in the next section
 // the sum of values of the main is the static score
