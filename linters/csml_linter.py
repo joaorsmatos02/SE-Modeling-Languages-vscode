@@ -31,7 +31,7 @@ def check_semantics(tree):
             if p_restriction:
                 restriction = p_restriction.children[0]
                 if len(restriction.children) == 1 and int(restriction.children[0].value) == 0:
-                    raise CSmlException("Propagation count must be greater than 0.", restriction.children[0])
+                    raise CSmlException("Propagation count must be greater than 0.", dec.meta)
                 elif len(restriction.children) == 1 and int(restriction.children[0].value) == 1:
                     return [CSmlWarning("Propagation count is 1, consider using 'C' instead for clarity.", dec.meta, code='replace-with-C')]
         return []
