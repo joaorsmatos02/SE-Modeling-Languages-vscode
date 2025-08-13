@@ -1,308 +1,200 @@
 import json
-import os
-import re
 import sys
-from lark import Lark, UnexpectedInput
+from common import DSLException, DSLWarning, check_metavars_placeholders, check_subterms, check_universal_rule, lint_code
 
-def check_line_semantics(rule, args):
-    issues = []
-    predicates = rule.split("::")
+class MCmlException(DSLException):
+    """Custom exception for MCml"""
+    def __init__(self, message, item=None):
+        super().__init__(message, item)
 
-    # check metavars and placeholders
-    variables_pattern = re.compile(r'[?!][a-zA-Z]+')
-    metavars = set()
-    placeholders = set()
-    for i in range(len(predicates)):
-        variables = list(variables_pattern.finditer(predicates[i]))
-        if i == len(predicates) - 1 and ">-" in predicates[i]:  # last predicate
-            variables = variables[:-1]  # ignore the last variable if it's a save operation
-        for match in reversed(variables):
-            symbol = match.group()
-            name = symbol[1:]
-            if symbol.startswith('?'): # is metavar
-                if name in args:  # if it's an argument, we treat it as a metavar
-                    issues.append({
-                        'column': rule.find(symbol),
-                        'message': f"Metavar ?{name} is received as an argument and is being redefined.",
-                        'severity': 1,
-                        'length': len(symbol)
-                    })
-                metavars.add(name)
-            else: # is placeholder
-                if name not in metavars and name not in args: # error, placeholder used before being defined
-                    issues.append({
-                        'column': rule.find(symbol),
-                        'message': f"Placeholder {symbol} is used before being defined.",
-                        'severity': 2,  # error
-                        'length': len(symbol)
-                    })
-                else:
-                    placeholders.add(name)
-    unused_metavars = metavars - placeholders
-    for var in unused_metavars:
-        issues.append({
-            'column': rule.find("?"+var),
-            'message': f"Metavar ?{var} is not used in a placeholder. Consider replacing it with an anonymous metavar.",
-            'severity': 1,  # warning
-            'length': 1+len(var),
-            'code': 'replace-with-??'
-        })
+class MCmlWarning(DSLWarning):
 
-    # check subterms
-    if len(predicates) > 3: # check if its not default and has expr
-        previous_len = len(predicates[0]) + len(predicates[1]) + 4
-        expr_pattern = predicates[2]
-        if "=<" in expr_pattern or "-<" in expr_pattern:
-            subterms = re.split(r'(?:=<|-<)', expr_pattern)
-            if re.search(r'\?([a-zA-Z]+|\?)', subterms[-1]): # error, rightmost subterm cant have metavars
-                issues.append({
-                    'column': previous_len + len(predicates[2]) - len(subterms[-1].rstrip()),
-                    'message': f"The rightmost subterm can't have metavars.",
-                    'severity': 2,  # error
-                    'length': len(subterms[-1].strip()),
-                })
-            for term in subterms[:-1]:
-                term = term.strip()
-                if re.match(r'\?([a-zA-Z]+|\?)', term): # error, no term can simply be a metavar
-                    issues.append({
-                        'column': previous_len + predicates[2].find(term),
-                        'message': f"No term can simply consist of a metavar.",
-                        'severity': 2,  # error
-                        'length': len(term),
-                    })
+    def __init__(self, message, item=None, code=""):
+        super().__init__(message, item, code)
+
+def check_semantics(tree):
+    """
+    Checks if there 1 mc value, as well as 1 static and 1 runtime patterns
+    Checks if pattern names are unique
+    Checks if only defined patterns are used and args are passed correctly
+    Checks usage of static metavars in runtime and if special runtime placeholders are not overriden
+
+    + checks from csml (metavar - placeholder correspondence; subterm checks)
+    """
+
+    # check if there 1 mc value, as well as 1 static and 1 runtime patterns
+    def check_patterns_mc(tree):
+        mc = list(tree.find_data("mc"))
+        if len(mc) != 1:
+            second_obj = mc[1] if len(mc) > 1 else None
+            raise MCmlException("There must be exactly one mc value defined in the policy.", second_obj.meta if second_obj else None)
+        static = list(tree.find_data("pattern_static"))
+        if len(static) != 1:
+            second_obj = static[1] if len(static) > 1 else None
+            raise MCmlException("There must be exactly one static pattern defined in the policy.", second_obj.meta if second_obj else None)
+        runtime = list(tree.find_data("pattern_runtime"))
+        if len(runtime) != 1:
+            second_obj = runtime[1] if len(runtime) > 1 else None
+            raise MCmlException("There must be exactly one runtime pattern defined in the policy.", second_obj.meta if second_obj else None)
+        
+    def check_for_universal_rules(tree):
+        warnings = []
+
+        static_pattern = next(tree.find_data("pattern_static"))
+        warnings += check_universal_rule(MCmlWarning, static_pattern, "static_rule", ['loc', 'ins', 'expr', 'look_ahead'])
+        runtime_pattern = next(tree.find_data("pattern_runtime"))
+        warnings += check_universal_rule(MCmlWarning, runtime_pattern, "runtime_rule", ['name_op', 'compare_contents', 'func'])
+
+        aux_patterns = list(tree.find_data("pattern"))
+        for pattern in aux_patterns:
+            fields = ["loc", "ins_placeholders", "func"]
+            rule_token = "pattern_expr_rule" if any(pattern.find_data("pattern_expr_rule")) else "pattern_rule"
+            if rule_token == "pattern_expr_rule":
+                fields.insert(2, "expr")
+            warnings += check_universal_rule(MCmlWarning, pattern, rule_token, fields)
+
+        return warnings
     
-    return placeholders, issues
+    # check if pattern names are unique and all are called
+    def check_unique_pattern_names(tree):
+        patterns = {} # name:(arg_count, token)
+        pattern_signatures = list(tree.find_data("pattern_signature"))
+        for signature in pattern_signatures:
+            name_token = next(signature.scan_values(lambda t: "IDENTIFIER" in t.type))
+            if name_token.value in patterns:
+                raise MCmlException(f"Pattern name '{name_token.value}' is not unique.", name_token)
+            else:
+                arg_count = 0 if len(signature.children) == 1 else len(signature.children[-1].children)
+                patterns[name_token.value] = (arg_count, name_token)
 
-def check_semantics(policy):
-    issues = []
+        pattern_calls = list(tree.find_data("pattern_call"))
+        called_pattern_names = set()
+        for call in pattern_calls:
+            name_token = next(call.scan_values(lambda t: "IDENTIFIER" in t.type))
+            called_pattern_names.add(name_token.value)
+            if name_token.value not in patterns:
+                raise MCmlException(f"Pattern '{name_token.value}' is used in the static pattern but not defined in the policy.", name_token)
+            else:
+                arg_count = 0 if len(call.children) == 1 else len(call.children[-1].children)
+                if arg_count != patterns[name_token.value][0]:
+                    raise MCmlException(f"Pattern '{name_token.value}' expects {patterns[name_token.value][0]} args, but {len(call.children) - 1} were provided.", name_token)
 
-    lines = policy.splitlines()
-    pattern_def_matches = list(re.finditer(r'\bpattern\s+(\w+)\s*(?:\((.*?)\))?\s*:', policy))
-    pattern_call_matches = list(re.finditer(r'q\(\s*(\w+)(?:\((.*?)\))?\s*\)', policy))
+        warnings = []
+        for name in set(patterns.keys()) - called_pattern_names:
+            warnings.append(MCmlWarning(f"Pattern '{name}' is defined but never called.", patterns[name][1]))
+        
+        return warnings
+    
+    # warns if args passed to patterns are unused or redefined
+    def check_pattern_args_usage(tree):
+        warnings = []
 
-    def get_line_column(pos):
-        line = policy.count('\n', 0, pos)
-        col = pos - policy.rfind('\n', 0, pos) - 1
-        return line, col
+        patterns = list(tree.find_data("pattern"))
+        for pattern in patterns:
+            received_metavars = {}
+            args = next(pattern.find_data("pattern_args"), None)
+            if args:
+                for arg in args.children:
+                    received_metavars[arg.children[0].value[1:]] = arg.children[0]
+                rules = next(pattern.find_data("pattern_rules"), None)
+                for metavar in rules.scan_values(lambda t: 'NAMED_METAVAR' in t.type):
+                    if metavar.value[1:] in received_metavars:
+                        warnings.append(MCmlWarning(f"Metavar ?{metavar.value[1:]} is received as an argument and is being redefined.", received_metavars[metavar.value[1:]]))
+                for placeholder in rules.scan_values(lambda t: 'NAMED_PLACEHOLDER' in t.type):
+                    if placeholder.value[1:] in received_metavars:
+                        del received_metavars[placeholder.value[1:]]
+                for unused_arg in received_metavars:
+                    warnings.append(MCmlWarning(f"Argument '?{unused_arg}' is defined but never used in the pattern.", received_metavars[unused_arg]))
 
-    def check_single_occurrence(pattern, label):
-        matches = list(re.finditer(pattern, policy))
-        if len(matches) == 0:
-            issues.append({
-                'message': f"Policy must contain exactly one {label}.",
-                'severity': 2,
-                'line': 0,
-                'length': 1,
-                'column': 0
-            })
-        elif len(matches) > 1:
-            lines = policy.splitlines(keepends=True)
-            for match in matches[1:]:
-                line, _ = get_line_column(match.start())
-                issues.append({
-                    'message': f"Policy can only have one {label}.",
-                    'severity': 2,
-                    'line': line,
-                    'length': len(lines[line].rstrip()),
-                    'column': 0
-                })
+        return warnings
 
-    # --- Check for universal rules ---
-    is_universal = list(re.finditer(r'\n\s*\*\s*::\s*\*\s*::\s*(\*\s*::\s*)?\*\s*->', policy))
-    for universal in is_universal:
-        line, _ = get_line_column(universal.start(1))
-        issues.append({
-            'message': "Universal rule, consider replacing with default",
-            'column': 0,
-            'severity': 1,  # warning
-            'line': line,
-            'length': len(lines[line].split("->")[0].rstrip()),
-            'code': 'universal-rule'
-        })
+    # check usage of metavars from the static pattern in runtime and if special runtime placeholders are not overriden in the static pattern
+    def check_static_metavars_runtime(tree):
 
-    # --- Check core pattern declarations ---
-    check_single_occurrence(r'mc(\s*):=', 'MC value')
-    check_single_occurrence(r'\bstatic\b', 'static pattern')
-    check_single_occurrence(r'\bruntime\b', 'runtime pattern')
+        saved = {}
+        save_in_instances = list(tree.find_data("save_in"))
+        for save_in in save_in_instances:
+            metavar = next(save_in.scan_values(lambda t: 'NAMED_METAVAR' in t.type), None)
+            if metavar.value in ["?n", "?c1", "?c2"]:
+                raise MCmlException(f"Static pattern cannot save metavariable '{metavar.value}' as it conflicts with the reserved names for the runtime pattern ('n', 'c1', 'c2').", metavar)
+            else:
+                saved[metavar.value[1:]] = metavar
 
-    # --- Extract pattern definitions and validate uniqueness ---
-    checked_patterns = set()
-    for match in pattern_def_matches:
-        pattern_name = match.group(1)
-        if pattern_name not in checked_patterns:
-            check_single_occurrence(rf'\bpattern\s+{re.escape(pattern_name)}\s*[:(]', f'pattern named {pattern_name}')
-            checked_patterns.add(pattern_name)
+        is_in_instances = list(tree.find_data("is_in"))
+        used = set()
+        for is_in in is_in_instances:
+            named_place = next(is_in.scan_values(lambda t: 'NAMED_PLACEHOLDER' in t.type), None)
+            used.add(named_place.value[1:])
+            if named_place.value[1:] not in saved:
+                raise MCmlException(f"Runtime pattern uses static metavariable '{named_place.value}' that is not saved in the static pattern.", named_place)
+            
+        warnings = []
+        for name in set(saved.keys()) - used:
+            warnings.append(MCmlWarning(f"Static pattern saves metavariable '?{name}' but it is never used in the runtime pattern.", saved[name]))
+        
+        return warnings
 
-    # --- Check pattern calls for validity and argument count ---
-    for call in pattern_call_matches:
-        func_name = call.group(1)
-        args_str = call.group(2)
-        call_line, col = get_line_column(call.start(1))
-        arg_count = 0
-        if args_str and args_str.strip():
-            args = [arg.strip() for arg in args_str.split(',') if arg.strip()]
-            arg_count = len(args)
-        for def_match in pattern_def_matches:
-            if def_match.group(1) == func_name:
-                param_str = def_match.group(2)
-                expected_args = [arg.strip() for arg in param_str.split(',')] if param_str else []
-                if arg_count != len(expected_args):
-                    issues.append({
-                        'message': f"Pattern '{func_name}' expects {len(expected_args)} argument(s), but got {arg_count}.",
-                        'severity': 2,
-                        'line': call_line,
-                        'length': len(func_name) + (len(args_str) + 2 if args_str else 0),
-                        'column': col
-                    })
-                break
-        else:
-            issues.append({
-                'message': f"Pattern '{func_name}' was called but does not exist.",
-                'severity': 2,
-                'line': call_line,
-                'length': len(func_name),
-                'column': col
-            })
+    # checks from csml
+    def check_metavars_placeholders_static_runtime(tree):
+        warnings = []
 
-    # --- Check for unused patterns ---
-    called_patterns = {m.group(1) for m in pattern_call_matches}
-    defined_patterns = {m.group(1) for m in pattern_def_matches}
-    unused = defined_patterns - called_patterns - {'static', 'runtime'}
-    for pattern in unused:
-        for def_match in pattern_def_matches:
-            if def_match.group(1) == pattern:
-                start_line, _ = get_line_column(def_match.start(1))
-                issues.append({
-                    'message': f"Pattern '{pattern}' is defined but never called.",
-                    'severity': 1,
-                    'line': start_line,
-                    'length': len(lines[start_line].rstrip()),
-                    'column': 0
-                })
-                break
+        static_pattern = next(tree.find_data("pattern_static"))
+        static_fields = ['ins', 'expr', 'look_ahead']
+        warnings += check_metavars_placeholders(MCmlException, MCmlWarning, static_pattern, "static_rule", static_fields)
+            
+        saved = {}
+        save_in_instances = list(tree.find_data("save_in"))
+        for save_in in save_in_instances:
+            metavar = next(save_in.scan_values(lambda t: 'NAMED_METAVAR' in t.type), None)
+            saved[metavar.value[1:]] = None
 
-    # --- Check reserved metavariables and runtime usage ---
-    static_match = next((m for m in pattern_def_matches if m.group(1) == 'static'), None)
-    runtime_match = next((m for m in pattern_def_matches if m.group(1) == 'runtime'), None)
-    if static_match and runtime_match:
-        static_line, _ = get_line_column(static_match.start(1))
-        runtime_line, _ = get_line_column(runtime_match.start(1))
-        saved_placeholders = set()
-        save_locations = {}
-        used_placeholders = set()
-        i = static_line + 1
-        while "default" not in lines[i]: # check saved metavars
-            save = re.search(r'(\S+)\s+>-\s+(\S+)', lines[i])
-            if save:
-                meta = save.group(2)
-                col = lines[i].find(meta)
-                if meta in ["?n", "?c1", "?c2"]:
-                    issues.append({
-                        'message': f"Static pattern cannot save metavariable '{meta}' as it conflicts with reserved runtime names.",
-                        'severity': 2,
-                        'line': i,
-                        'length': len(meta),
-                        'column': col
-                    })
-                else:
-                    saved_placeholders.add(meta[1:])  # strip "?"
-                    if meta[1:] not in save_locations:
-                        save_locations[meta[1:]] = []
-                    save_locations[meta[1:]].append((len(meta), i, col))
-            i += 1
-        i = runtime_line + 1
-        while "default" not in lines[i]: # check used metavars
-            use = re.search(r'(\S+)\s+-<\s+(\S+)', lines[i])
-            if use:
-                meta = use.group(2)
-                if meta[1:] not in saved_placeholders:
-                    col = lines[i].find(meta)
-                    issues.append({
-                        'message': f"Runtime pattern cannot use metavariable '{meta}' as it was not saved by the static pattern.",
-                        'severity': 2,
-                        'line': i,
-                        'length': len(meta),
-                        'column': col
-                    })
-                else:
-                    used_placeholders.add(meta[1:])
-            i += 1
-        unused_placeholders = saved_placeholders - used_placeholders
-        for placeholder in unused_placeholders: # check for unused saved
-            for def_loc in save_locations[placeholder]:
-                issues.append({
-                    'message': f"Static pattern saves metavariable '?{placeholder}' but it is never used in the runtime pattern.",
-                    'severity': 1,  # warning
-                    'line': def_loc[1],
-                    'length': def_loc[0],
-                    'column': def_loc[2]
-                })
+        runtime_pattern = next(tree.find_data("pattern_runtime"))
+        runtime_fields = ["func"] # name has already been checked, and compare is limited by the grammar
+        starter_metavars = {"n": None, "c1": None, "c2": None}
+        starter_metavars.update(saved)
+        warnings += check_metavars_placeholders(MCmlException, MCmlWarning, runtime_pattern, "runtime_rule", runtime_fields, starter_metavars, True)
+        
+        return warnings
 
-    # --- Check usage of metavars and placeholders (akin to csml) ---
-    for pattern in pattern_def_matches:
-        if pattern.group(1) != 'runtime':
-            start, _ = get_line_column(pattern.start(1))
-            start += 1  # skip the pattern definition line
-            param_str = pattern.group(2)
-            args = [arg.strip()[1:] for arg in param_str.split(',')] if param_str else []
-            end = start
-            while not "default" in lines[end]:
-                end += 1
-            used_placeholders = set()
-            for i in range(start, end):
-                line_placeholders, line_issues = check_line_semantics(lines[i], args)  # pass args to the function
-                used_placeholders.update(line_placeholders)
-                for issue in line_issues:
-                    issues.append({**issue, "line": i})
-            unused_args = set(args) - used_placeholders
-            for arg in unused_args: # check for unused args
-                issues.append({
-                    'message': f"Argument '{arg}' is defined but never used in the pattern.",
-                    'severity': 1,
-                    'line': start-1,
-                    'length': len(arg) + 1,  # include the "?" prefix
-                    'column': lines[start-1].find(f"?{arg}")
-                })
+    def check_metavars_placeholders_subterms_aux_patterns(tree):
+        warnings = []
 
-    return issues
+        for pattern in tree.find_data("pattern"):
+            received_metavars = {}
+            args = next(pattern.find_data("pattern_args"), None)
+            if args:
+                for arg in args.children:
+                    received_metavars[arg.children[0].value[1:]] = arg.children[0]
+            fields = ["loc", "ins_placeholders", "func"]
+            rule_token = "pattern_expr_rule" if any(pattern.find_data("pattern_expr_rule")) else "pattern_rule"
+            if rule_token == "pattern_expr_rule":
+                fields.insert(2, "expr")
+            warnings += check_metavars_placeholders(MCmlException, MCmlWarning, pattern, rule_token, fields, received_metavars)
 
-def strip_comments(code):
-    lines = code.splitlines()
-    return '\n'.join(
-        '' if line.strip().startswith('//') else line.split('//', 1)[0].rstrip()
-        for line in lines
-    )
+            if rule_token == "pattern_expr_rule":
+                check_subterms(MCmlException, pattern)
 
-def lint_code(code):
-    parser = Lark.open("mcml.lark", start="policy", parser="lalr", import_paths=[os.path.dirname(__file__)], rel_to=__file__)
-    issues = []
-    try:
-        parser.parse(code)
-    except UnexpectedInput as e:
-        err = re.findall(r"'([^']*)'", str(e))[1]
-        issues.append({
-            "line": e.line - 1,
-            "column": e.column - 1,
-            "message": str(e).split("\\n")[0].split("//")[0].rstrip(),
-            "severity": 2,  # error
-            "length": len(err.split(" ")[0])
-        })
-        return issues
+        return warnings
 
-    code = strip_comments(code)
-    issues += check_semantics(code)
+    check_patterns_mc(tree)
+    warnings = check_for_universal_rules(tree)
+    warnings += check_unique_pattern_names(tree)
+    warnings += check_pattern_args_usage(tree)
+    warnings += check_static_metavars_runtime(tree)
+    warnings += check_metavars_placeholders_static_runtime(tree)
+    warnings += check_metavars_placeholders_subterms_aux_patterns(tree)
 
-    return issues
+    return warnings
 
 if __name__ == "__main__":
     while True:
-        policy = sys.stdin.readline()
-        if not policy:
+        line = sys.stdin.readline()
+        if not line:
             break  # EOF
         try:
-            data = json.loads(policy)
+            data = json.loads(line)
             code = data.get("code", "")
-            issues = lint_code(code)
+            issues = lint_code(code, "mcml.lark", check_semantics)
             print(json.dumps(issues))
             sys.stdout.flush()
         except Exception as e:

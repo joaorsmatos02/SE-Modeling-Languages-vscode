@@ -1,9 +1,13 @@
 metavar: named_meta | anonymous // when matched become available to ALL subsequent terms through placeholders
-named_meta: /[?][a-zA-Z_][a-zA-Z0-9_]*/
-anonymous: "??"
+named_meta: NAMED_METAVAR
+NAMED_METAVAR: /[?][a-zA-Z_][a-zA-Z0-9_]*/
+anonymous: ANONYMOUS_METAVAR
+ANONYMOUS_METAVAR: "??"
 placeholder: named_place | distinguished
-named_place: /[!][a-zA-Z_][a-zA-Z0-9_]*/
-distinguished: "!!"
+named_place: NAMED_PLACEHOLDER
+NAMED_PLACEHOLDER: /[!][a-zA-Z_][a-zA-Z0-9_]*/
+distinguished: DISTINGUISHED_PLACEHOLDER
+DISTINGUISHED_PLACEHOLDER: "!!"
 
 // bil_preface
 

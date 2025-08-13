@@ -151,7 +151,7 @@ function registerLinters(context) {
       const timeout = setTimeout(() => {
         runLinter(document, diagnosticCollection);
         debounceMap.delete(uri);
-      }, 300); // 300ms delay after last keystroke
+      }, 100); // 100ms delay after last keystroke
 
       debounceMap.set(uri, timeout);
     })

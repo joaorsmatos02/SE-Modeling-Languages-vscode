@@ -1,138 +1,47 @@
-import os
-import re
 import sys
 import json
-from lark import Lark, UnexpectedInput
+from common import DSLException, DSLWarning, check_metavars_placeholders, check_subterms, check_universal_rule, lint_code
 
-def check_semantics(rule):
+class CSmlException(DSLException):
+    """Custom exception for CSml"""
+    def __init__(self, message, item=None):
+        super().__init__(message, item)
+
+class CSmlWarning(DSLWarning):
+
+    def __init__(self, message, item=None, code=""):
+        super().__init__(message, item, code)
+
+def check_semantics(tree):
     """
-    ensures every named placeholder (!xyz) has a corresponding named metavar (?xyz) in a previous predicate (metavars can be reused in the same predicate)
-    if a metavar is unused, suggests replacing with ??
-    ignores '!!' and '??'
+    Ensures every named placeholder (!xyz) has a corresponding named metavar (?xyz) in a previous predicate. (metavars can be reused in the same predicate)
+    Ignores '!!' and '??'.
 
     subterm checks (need to give some context in order to match it)
         no term can simply be a metavar 
         the rightmost subterm cant have metavars
 
-    checks if propagation count is 1 and suggests switching to C in that case
+    if a propagation count is given, checks if its more than 0
+    (negatives are not allowed by the grammar, but 0 also does not make sense)
     """
-    issues = []
-
-    # check if rule is universal (warning)
-    is_universal = re.search(r'\*\s*::\s*\*\s*::\s*\*\s*::\s*\*\s*->', rule)
-    if is_universal:
-        issues.append({
-            'column': 0,
-            'message': "Universal rule, consider replacing with default",
-            'severity': 1,  # warning
-            'length': len(rule.split("->")[0].rstrip()),
-            'code': 'universal-rule'
-        })
-        return issues
     
-    predicates = rule.split("::")
+    def check_propagate_restricions(tree):
+        for dec in tree.find_data("dec"):
+            p_restriction = next(dec.find_data("p_restriction"), None)
+            if p_restriction:
+                restriction = p_restriction.children[0]
+                if len(restriction.children) == 1 and int(restriction.children[0].value) == 0:
+                    raise CSmlException("Propagation count must be greater than 0.", restriction.children[0])
+                elif len(restriction.children) == 1 and int(restriction.children[0].value) == 1:
+                    return [CSmlWarning("Propagation count is 1, consider using 'C' instead for clarity.", dec.meta, code='replace-with-C')]
+        return []
 
-    # check metavars and placeholders
-    variables_pattern = re.compile(r'[?!][a-zA-Z]+')
-    metavars = set()
-    placeholders = set()
-    for predicate in predicates:
-        variables = list(variables_pattern.finditer(predicate))
-        for match in reversed(variables):
-            symbol = match.group()
-            name = symbol[1:]
-            if symbol.startswith('?'): # is metavar
-                metavars.add(name)
-            else: # is placeholder
-                if name not in metavars: # error, placeholder used before being defined
-                    issues.append({
-                        'column': rule.find(symbol),
-                        'message': f"Placeholder {symbol} is used before being defined.",
-                        'severity': 2,  # error
-                        'length': len(symbol)
-                    })
-                else:
-                    placeholders.add(name)
-    unused_metavars = metavars - placeholders
-    for var in unused_metavars:
-        issues.append({
-            'column': rule.find("?"+var),
-            'message': f"Metavar ?{var} is not used in a placeholder. Consider replacing it with an anonymous metavar.",
-            'severity': 1,  # warning
-            'length': 1+len(var),
-            'code': 'replace-with-??'
-        })
+    warnings = check_universal_rule(CSmlWarning, tree, "rule", ['loc', 'ins', 'expr', 'mem'])
+    warnings += check_metavars_placeholders(CSmlException, CSmlWarning, tree, "rule", ['ins', 'expr', 'mem', 'dec'])
+    check_subterms(CSmlException, tree)
+    warnings += check_propagate_restricions(tree)
 
-    # check subterms
-    if len(predicates) > 3: # check if its not default
-        previous_len = len(predicates[0]) + len(predicates[1]) + 4
-        expr_pattern = predicates[2]
-        if "=<" in expr_pattern or "-<" in expr_pattern:
-            subterms = re.split(r'(?:=<|-<)', expr_pattern)
-            if re.search(r'\?([a-zA-Z]+|\?)', subterms[-1]): # error, rightmost subterm cant have metavars
-                issues.append({
-                    'column': previous_len + len(predicates[2]) - len(subterms[-1].rstrip()),
-                    'message': f"The rightmost subterm can't have metavars.",
-                    'severity': 2,  # error
-                    'length': len(subterms[-1].strip()),
-                })
-            for term in subterms[:-1]:
-                term = term.strip()
-                if re.match(r'\?([a-zA-Z]+|\?)', term): # error, no term can simply be a metavar
-                    issues.append({
-                        'column': previous_len + predicates[2].find(term),
-                        'message': f"No term can simply consist of a metavar.",
-                        'severity': 2,  # error
-                        'length': len(term),
-                    })
-
-    # check propagate
-    propagate_pattern = re.compile(r'P\[(\d+)')
-    for match in propagate_pattern.finditer(rule):
-        value = int(match.group(1))
-        column = match.start()
-        if value == 1:
-            issues.append({
-                'column': column,
-                'message': "Propagation count is 1, consider using 'C' instead for clarity.",
-                'severity': 1,  # warning
-                'length': rule.rfind("]") + 1 - match.start(),
-                'code': 'replace-with-C'
-            })
-
-    return issues
-
-def strip_comments(code):
-    lines = code.splitlines()
-    return '\n'.join(
-        '' if line.strip().startswith('//') else line.split('//', 1)[0].rstrip()
-        for line in lines
-    )
-
-def lint_code(code):
-    parser = Lark.open("csml.lark", start="policy", parser="lalr", import_paths=[os.path.dirname(__file__)], rel_to=__file__)
-    issues = []
-    try:
-        parser.parse(code)
-    except UnexpectedInput as e:
-        err = re.findall(r"'([^']*)'", str(e))[1]
-        issues.append({
-            "line": e.line - 1,
-            "column": e.column - 1,
-            "message": str(e).split("\\n")[0].split("//")[0].rstrip(),
-            "severity": 2,  # error
-            "length": len(err.split(" ")[0])
-        })
-        return issues
-
-    code = strip_comments(code)
-    rules = code.split("\n")
-    for i in range(len(rules)):
-        line_issues = check_semantics(rules[i])
-        for issue in line_issues:
-            issues.append({**issue, "line": i})
-
-    return issues
+    return warnings
 
 if __name__ == "__main__":
     while True:
@@ -142,7 +51,7 @@ if __name__ == "__main__":
         try:
             data = json.loads(line)
             code = data.get("code", "")
-            issues = lint_code(code)
+            issues = lint_code(code, "csml.lark", check_semantics)
             print(json.dumps(issues))
             sys.stdout.flush()
         except Exception as e:
