@@ -23,20 +23,20 @@ def lint_code(code, grammar_file, check_semantics):
         warnings = check_semantics(tree)
         for warning in warnings:
             issues.append({
-                "line": warning.line - 1,
-                "column": warning.column - 1,
+                "line": warning.line - 1 if warning.line else 0,
+                "column": warning.column - 1 if warning.column else 0,
                 "message": warning.message,
                 "severity": 1,  # warning
-                "length": warning.end_column - warning.column,
+                "length": warning.end_column - warning.column if warning.column else 0,
                 "code": warning.code
             })
     except DSLException as e:
         issues.append({
-                "line": e.line - 1,
-                "column": e.column - 1,
+                "line": e.line - 1 if e.line else 0,
+                "column": e.column - 1 if e.column else 0,
                 "message": e.message,
                 "severity": 2,  # error
-                "length": e.end_column - e.column
+                "length": e.end_column - e.column  if e.column else 0
             })
 
     return issues
@@ -48,18 +48,20 @@ class DSLException(Exception):
     def __init__(self, message, item=None):
         super().__init__(message)
         self.message = message
-        self.line = item.line if item else 0
-        self.column = item.column if item else 0
-        self.end_column = item.end_column if item else 0
+        self.line = item.line if item else None
+        self.column = item.column if item else None
+        self.end_column = item.end_column if item else None
+        self.source = None
 
-class DSLWarning():
+class DSLWarning:
 
     def __init__(self, message, item=None, code=""):
         self.message = message
-        self.line = item.line if item else 0
-        self.column = item.column if item else 0
-        self.end_column = item.end_column if item else 0
+        self.line = item.line if item else None
+        self.column = item.column if item else None
+        self.end_column = item.end_column if item else None
         self.code = code
+        self.source = None
 
 # functions for checking semantics of the rules in the DSLs
 def check_universal_rule(warning_class, pattern_tree, rule_token, rule_fields):

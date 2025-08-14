@@ -1,3 +1,5 @@
+from lark import Token
+from copy import deepcopy
 import json
 import sys
 from common import DSLException, DSLWarning, check_metavars_placeholders, check_subterms, check_universal_rule, lint_code
@@ -24,18 +26,39 @@ def check_semantics(tree):
 
     # check if there 1 mc value, as well as 1 static and 1 runtime patterns
     def check_patterns_mc(tree):
+
+        def first_line_meta(node):
+            """Return a copy of node.meta that only spans the first line."""
+            meta = deepcopy(node.meta)
+
+            # Find first and last tokens *on the first line only*
+            def tokens_on_first_line(t):
+                if isinstance(t, Token):
+                    if 'NEWLINE' in t.type:
+                        return
+                    if t.line == meta.line:  # only tokens on first line
+                        yield t
+                else:
+                    for c in t.children:
+                        yield from tokens_on_first_line(c)
+
+            toks = list(tokens_on_first_line(node))
+            if toks:
+                meta.end_column = toks[-1].end_column  # exclusive end
+            return meta
+
         mc = list(tree.find_data("mc"))
         if len(mc) != 1:
             second_obj = mc[1] if len(mc) > 1 else None
-            raise MCmlException("There must be exactly one mc value defined in the policy.", second_obj.meta if second_obj else None)
+            raise MCmlException("There must be exactly one mc value defined in the policy.", first_line_meta(second_obj) if second_obj else None)
         static = list(tree.find_data("pattern_static"))
         if len(static) != 1:
             second_obj = static[1] if len(static) > 1 else None
-            raise MCmlException("There must be exactly one static pattern defined in the policy.", second_obj.meta if second_obj else None)
+            raise MCmlException("There must be exactly one static pattern defined in the policy.", first_line_meta(second_obj) if second_obj else None)
         runtime = list(tree.find_data("pattern_runtime"))
         if len(runtime) != 1:
             second_obj = runtime[1] if len(runtime) > 1 else None
-            raise MCmlException("There must be exactly one runtime pattern defined in the policy.", second_obj.meta if second_obj else None)
+            raise MCmlException("There must be exactly one runtime pattern defined in the policy.", first_line_meta(second_obj) if second_obj else None)
         
     def check_for_universal_rules(tree):
         warnings = []

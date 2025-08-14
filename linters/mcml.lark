@@ -29,9 +29,11 @@ float: /-?\d+\.\d+/
 num: int | float
 
 pattern: PATTERN_DECLARATION pattern_signature ":" NEWLINE pattern_rules
-pattern_static: PATTERN_DECLARATION "static" ":" NEWLINE static_rules
-pattern_runtime: PATTERN_DECLARATION "runtime" ":" NEWLINE runtime_rules
+pattern_static: PATTERN_DECLARATION STATIC_PATTERN ":" NEWLINE static_rules
+pattern_runtime: PATTERN_DECLARATION RUNTIME_PATTERN ":" NEWLINE runtime_rules
 PATTERN_DECLARATION: "pattern"
+STATIC_PATTERN: "static"
+RUNTIME_PATTERN: "runtime"
 pattern_signature: func_name ("(" pattern_args ")" | "(" ")")?
 pattern_args: named_meta ("," named_meta)* // metavars are a (modified) bap-il thing, but we need them here to pass as args
 
