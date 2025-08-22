@@ -46,17 +46,15 @@ pattern_expr_rule: loc "::" ins_placeholders "::" expr "::" func "->" num NEWLIN
 ins_placeholders: "<" stmt_metavars_placeholders ">" | wildcard // special ins with placeholders, just for the aux patterns since they may receive args
 default: "default" "->" num NEWLINE?
 
-bool_op: less | more | equals | diff // add more if needed
-str_op: equals | diff
-    less: "<"
-    more: ">"
-    equals: "=="
-    diff: "/="
-
 static_rule: loc "::" ins "::" expr "::" look_ahead "->" static_dec NEWLINE
 look_ahead: q_call_op bool_op q_call_op | wildcard
 q_call_op: q_call | num | q_call_op num_op q_call_op
 q_call: "q" "(" pattern_call ")"
+bool_op: less | more | equals | diff // add more if needed
+    less: "<"
+    more: ">"
+    equals: "=="
+    diff: "/="
 num_op: plus | minus | mul | div | mod // add more if needed
     plus: "+"
     minus: "-"
@@ -70,12 +68,11 @@ save_in: placeholder ">-" named_meta // saves the expression in the provided met
 static_default: "default" "->" static_dec NEWLINE?
 
 runtime_rule: name_op  "::" compare_contents "::" func "->" num NEWLINE
-name_op: is_in | compare_name | wildcard // add more if needed
+name_op: is_in | "<" var_name ">" | wildcard // add more if needed
 is_in: name_place "-<" named_place
-compare_name: name_place str_op var_name
     name_place: "!n"
-compare_contents: content str_op content | wildcard // add more if needed (str_op because it does not really matter which is bigger, only that they are different)
-content: content_1 | content_2
+compare_contents: content bool_op content | wildcard // add more if needed
+content: content_1 | content_2 | num
     content_1: "!c1"
     content_2: "!c2"
 runtime_default: "default" "->" num NEWLINE?

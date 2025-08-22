@@ -4,8 +4,8 @@ from common import DSLException, DSLWarning, check_metavars_placeholders, check_
 
 class CSmlException(DSLException):
     """Custom exception for CSml"""
-    def __init__(self, message, item=None):
-        super().__init__(message, item)
+    def __init__(self, message, item=None, code=""):
+        super().__init__(message, item, code)
 
 class CSmlWarning(DSLWarning):
 

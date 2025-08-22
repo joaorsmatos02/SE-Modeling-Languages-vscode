@@ -36,7 +36,8 @@ def lint_code(code, grammar_file, check_semantics):
                 "column": e.column - 1 if e.column else 0,
                 "message": e.message,
                 "severity": 2,  # error
-                "length": e.end_column - e.column  if e.column else 0
+                "length": e.end_column - e.column  if e.column else 0,
+                "code": e.code
             })
 
     return issues
@@ -45,12 +46,13 @@ def lint_code(code, grammar_file, check_semantics):
 
 class DSLException(Exception):
 
-    def __init__(self, message, item=None):
+    def __init__(self, message, item=None, code=""):
         super().__init__(message)
         self.message = message
         self.line = item.line if item else None
         self.column = item.column if item else None
         self.end_column = item.end_column if item else None
+        self.code = code
         self.source = None
 
 class DSLWarning:
@@ -82,11 +84,17 @@ def check_metavars_placeholders(exception_class, warning_class, tree, rule_token
     warnings = []
 
     def update_lists(tree, metavars, placeholders):
+        this_metavars = []
         for token in tree.scan_values(lambda t: 'NAMED_METAVAR' in t.type):
+            if token.value[1:] in metavars and token.value[1:] not in this_metavars:
+                raise exception_class(f"Metavar {token.value} is redefined.", token)
             metavars[token.value[1:]] = token
+            this_metavars.append(token.value[1:])
         for token in tree.scan_values(lambda t: 'NAMED_PLACEHOLDER' in t.type):
             if token.value[1:] not in metavars.keys():
                 raise exception_class(f"Placeholder '{token.value}' is used before being defined.", token)
+            if token.value[1:] in this_metavars:
+                raise exception_class(f"Meta-variable '?{token.value[1:]}' is defined and used as '!{token.value[1:]}' in the same predicate. Consider replacing with a meta-variable.", token, "replace-with-?")
             placeholders[token.value[1:]] = token
 
     for rule in tree.find_data(rule_token):

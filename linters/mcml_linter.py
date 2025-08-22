@@ -6,8 +6,8 @@ from common import DSLException, DSLWarning, check_metavars_placeholders, check_
 
 class MCmlException(DSLException):
     """Custom exception for MCml"""
-    def __init__(self, message, item=None):
-        super().__init__(message, item)
+    def __init__(self, message, item=None, code=""):
+        super().__init__(message, item, code)
 
 class MCmlWarning(DSLWarning):
 
@@ -122,7 +122,7 @@ def check_semantics(tree):
                 rules = next(pattern.find_data("pattern_rules"), None)
                 for metavar in rules.scan_values(lambda t: 'NAMED_METAVAR' in t.type):
                     if metavar.value[1:] in received_metavars:
-                        warnings.append(MCmlWarning(f"Metavar ?{metavar.value[1:]} is received as an argument and is being redefined.", received_metavars[metavar.value[1:]]))
+                        raise MCmlException(f"Metavar ?{metavar.value[1:]} is received as an argument and redefined.", metavar)
                 for placeholder in rules.scan_values(lambda t: 'NAMED_PLACEHOLDER' in t.type):
                     if placeholder.value[1:] in received_metavars:
                         del received_metavars[placeholder.value[1:]]
@@ -192,7 +192,7 @@ def check_semantics(tree):
             rule_token = "pattern_expr_rule" if any(pattern.find_data("pattern_expr_rule")) else "pattern_rule"
             if rule_token == "pattern_expr_rule":
                 fields.insert(2, "expr")
-            warnings += check_metavars_placeholders(MCmlException, MCmlWarning, pattern, rule_token, fields, received_metavars)
+            warnings += check_metavars_placeholders(MCmlException, MCmlWarning, pattern, rule_token, fields, received_metavars, True)
 
             if rule_token == "pattern_expr_rule":
                 check_subterms(MCmlException, pattern)

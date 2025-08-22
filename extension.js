@@ -210,6 +210,22 @@ class CsmlQuickFixProvider {
           fix.isPreferred = true;
           actions.push(fix);
         }
+
+        else if (diagnostic.code === 'replace-with-?') {
+          const fix = new vscode.CodeAction(
+            "Replace with a meta-variable",
+            vscode.CodeActionKind.QuickFix
+          );
+          fix.edit = new vscode.WorkspaceEdit();
+          const range = new vscode.Range(
+            diagnostic.range.start,
+            new vscode.Position(diagnostic.range.start.line, diagnostic.range.start.character + 1)
+          );        
+          fix.edit.replace(document.uri, range, "?");
+          fix.diagnostics = [diagnostic];
+          fix.isPreferred = true;
+          actions.push(fix);
+        }
       
     }
 
