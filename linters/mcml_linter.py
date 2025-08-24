@@ -70,7 +70,7 @@ def check_semantics(tree):
 
         aux_patterns = list(tree.find_data("pattern"))
         for pattern in aux_patterns:
-            fields = ["loc", "ins_placeholders", "func"]
+            fields = ["loc", "ins", "func"]
             rule_token = "pattern_expr_rule" if any(pattern.find_data("pattern_expr_rule")) else "pattern_rule"
             if rule_token == "pattern_expr_rule":
                 fields.insert(2, "expr")
@@ -188,7 +188,7 @@ def check_semantics(tree):
             if args:
                 for arg in args.children:
                     received_metavars[arg.children[0].value[1:]] = arg.children[0]
-            fields = ["loc", "ins_placeholders", "func"]
+            fields = ["loc", "ins", "func"]
             rule_token = "pattern_expr_rule" if any(pattern.find_data("pattern_expr_rule")) else "pattern_rule"
             if rule_token == "pattern_expr_rule":
                 fields.insert(2, "expr")

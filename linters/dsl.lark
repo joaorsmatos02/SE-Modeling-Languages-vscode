@@ -1,4 +1,4 @@
-%import modified_bap_il (stmt_metavars, exp_metavars_placeholders, exp_placeholders)
+%import modified_bap_il (stmt_metavars_placeholders, exp_metavars_placeholders, exp_placeholders)
 
 // shared grammar between csml and mcml
 
@@ -7,7 +7,7 @@ wildcard: "*"
 loc: num | "[" num ".." num  "]" | wildcard
 
 // instructions correspond to BIL statements and can have metavars
-ins: "<" stmt_metavars ">" | wildcard
+ins: "<" stmt_metavars_placeholders ">" | wildcard
 
 // expressions are the building blocks of instructions and can have new metavars or placeholders (which replace the previous metavars)
 expr: "<" exp_metavars_placeholders ">" | subterm | strict_subterm | wildcard

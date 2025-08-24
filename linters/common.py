@@ -87,7 +87,7 @@ def check_metavars_placeholders(exception_class, warning_class, tree, rule_token
         this_metavars = []
         for token in tree.scan_values(lambda t: 'NAMED_METAVAR' in t.type):
             if token.value[1:] in metavars and token.value[1:] not in this_metavars:
-                raise exception_class(f"Metavar {token.value} is redefined.", token)
+                raise exception_class(f"Meta-variable '{token.value}' is redefined.", token)
             metavars[token.value[1:]] = token
             this_metavars.append(token.value[1:])
         for token in tree.scan_values(lambda t: 'NAMED_PLACEHOLDER' in t.type):

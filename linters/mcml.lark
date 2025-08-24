@@ -41,9 +41,8 @@ pattern_rules: (pattern_rule+ | pattern_expr_rule+)? default
 static_rules: static_rule* static_default
 runtime_rules: runtime_rule* runtime_default
 
-pattern_rule: loc "::" ins_placeholders "::" func "->" num NEWLINE
-pattern_expr_rule: loc "::" ins_placeholders "::" expr "::" func "->" num NEWLINE
-ins_placeholders: "<" stmt_metavars_placeholders ">" | wildcard // special ins with placeholders, just for the aux patterns since they may receive args
+pattern_rule: loc "::" ins "::" func "->" num NEWLINE
+pattern_expr_rule: loc "::" ins "::" expr "::" func "->" num NEWLINE
 default: "default" "->" num NEWLINE?
 
 static_rule: loc "::" ins "::" expr "::" look_ahead "->" static_dec NEWLINE
