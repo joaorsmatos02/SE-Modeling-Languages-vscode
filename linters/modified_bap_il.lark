@@ -182,9 +182,9 @@ mem_placeholders: "mem" "<" num_placeholder "," num_placeholder ">"
 
 // bil_bitvector_val (MISSING parentheses and 1:nat (not necessary, same as the first one))
 
-word_metavars: num_metavar ":" num_metavar | true | false | word_op_metavars
-word_metavars_placeholders: num_metavar_placeholder ":" num_metavar_placeholder | true | false | word_op_metavars_placeholders
-word_placeholders: num_placeholder ":" num_placeholder | true | false | word_op_placeholders
+word_metavars: num_metavar "'" num_metavar | true | false | word_op_metavars
+word_metavars_placeholders: num_metavar_placeholder "'" num_metavar_placeholder | true | false | word_op_metavars_placeholders
+word_placeholders: num_placeholder "'" num_placeholder | true | false | word_op_placeholders
 
 word_op_metavars: word_metavars "bv" aop word_metavars | word_metavars "bv" less word_metavars | word_metavars "bv" s_less word_metavars | "bv" uop word_metavars | word_metavars "bv" dot_concat word_metavars
 word_op_metavars_placeholders: word_metavars_placeholders "bv" aop word_metavars_placeholders | word_metavars_placeholders "bv" less word_metavars_placeholders | word_metavars_placeholders "bv" s_less word_metavars_placeholders | "bv" uop word_metavars_placeholders | word_metavars_placeholders "bv" dot_concat word_metavars_placeholders

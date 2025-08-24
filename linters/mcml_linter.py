@@ -192,7 +192,7 @@ def check_semantics(tree):
             rule_token = "pattern_expr_rule" if any(pattern.find_data("pattern_expr_rule")) else "pattern_rule"
             if rule_token == "pattern_expr_rule":
                 fields.insert(2, "expr")
-            warnings += check_metavars_placeholders(MCmlException, MCmlWarning, pattern, rule_token, fields, received_metavars, True, False)
+            warnings += check_metavars_placeholders(MCmlException, MCmlWarning, pattern, rule_token, fields, received_metavars, True, "expr" in fields)
 
             if rule_token == "pattern_expr_rule":
                 check_subterms(MCmlException, pattern)
