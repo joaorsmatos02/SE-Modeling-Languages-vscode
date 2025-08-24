@@ -80,7 +80,7 @@ def check_universal_rule(warning_class, pattern_tree, rule_token, rule_fields):
 
     return warnings
 
-def check_metavars_placeholders(exception_class, warning_class, tree, rule_token, rule_fields, starter_metavars={}, used_starter_placeholders=False):
+def check_metavars_placeholders(exception_class, warning_class, tree, rule_token, rule_fields, starter_metavars={}, used_starter_placeholders=False, distinguished_ok=True):
     warnings = []
 
     def update_lists(tree, metavars, placeholders):
@@ -96,6 +96,9 @@ def check_metavars_placeholders(exception_class, warning_class, tree, rule_token
             if token.value[1:] in this_metavars:
                 raise exception_class(f"Meta-variable '?{token.value[1:]}' is defined and used as '!{token.value[1:]}' in the same predicate. Consider replacing with a meta-variable.", token, "replace-with-?")
             placeholders[token.value[1:]] = token
+        if not distinguished_ok and any(tree.scan_values(lambda t: 'DISTINGUISHED_PLACEHOLDER' in t.type)):
+            distinguished = next(tree.scan_values(lambda t: 'DISTINGUISHED_PLACEHOLDER' in t.type))
+            raise exception_class(f"The distinguished placeholder can only be used if there is an expression predicate", distinguished)
 
     for rule in tree.find_data(rule_token):
         metavars = {}

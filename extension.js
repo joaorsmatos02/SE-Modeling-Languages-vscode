@@ -140,20 +140,23 @@ function registerLinters(context) {
   // Debounced Lint on Type (Change)
   context.subscriptions.push(
     vscode.workspace.onDidChangeTextDocument(event => {
-      const document = event.document;
-      const language = document.languageId;
-
-      if (!['csml', 'mcml'].includes(language)) return;
-
-      const uri = document.uri.toString();
-      clearTimeout(debounceMap.get(uri));
-
+      const { document } = event;
+      const { languageId, uri } = document;
+  
+      if (!['csml', 'mcml'].includes(languageId)) return;
+  
+      clearTimeout(debounceMap.get(uri.toString()));
+  
       const timeout = setTimeout(() => {
-        runLinter(document, diagnosticCollection);
-        debounceMap.delete(uri);
-      }, 100); // 100ms delay after last keystroke
-
-      debounceMap.set(uri, timeout);
+        // Always get the up-to-date document from VS Code
+        const currentDoc = vscode.workspace.textDocuments.find(doc => doc.uri.toString() === uri.toString());
+        if (currentDoc) {
+          runLinter(currentDoc, diagnosticCollection);
+        }
+        debounceMap.delete(uri.toString());
+      }, 300); // small wait before linting while typing (allow user to finish writing)
+  
+      debounceMap.set(uri.toString(), timeout);
     })
   );
 
@@ -176,7 +179,7 @@ function registerLinters(context) {
 
 ////////////////// set up quick fixes //////////////////
 
-class CsmlQuickFixProvider {
+class QuickFixProvider {
   provideCodeActions(document, range, context) {
     const actions = [];
 
@@ -238,7 +241,7 @@ function registerQuickFixes(context) {
   context.subscriptions.push(
     vscode.languages.registerCodeActionsProvider(
       ['csml', 'mcml'],
-      new CsmlQuickFixProvider(),
+      new QuickFixProvider(),
       {
         providedCodeActionKinds: [vscode.CodeActionKind.QuickFix]
       }
