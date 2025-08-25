@@ -26,15 +26,21 @@ def check_semantics(tree):
     """
     
     def check_propagate_restricions(tree):
+        warnings = []
         for dec in tree.find_data("dec"):
             p_restriction = next(dec.find_data("p_restriction"), None)
             if p_restriction:
-                restriction = p_restriction.children[0]
-                if len(restriction.children) == 1 and int(restriction.children[0].value) == 0:
-                    raise CSmlException("Propagation count must be greater than 0.", dec.meta)
-                elif len(restriction.children) == 1 and int(restriction.children[0].value) == 1:
-                    return [CSmlWarning("Propagation count is 1, consider using 'C' instead for clarity.", dec.meta, code='replace-with-C')]
-        return []
+                restrictions = [t for t in p_restriction.scan_values(lambda t: True)]
+                if len(restrictions) == 1:
+                    try:
+                        count = int(restrictions[0].value)
+                    except:
+                        continue
+                    if count == 0:
+                        raise CSmlException("Propagation count must be greater than 0.", dec.meta)
+                    elif count == 1:
+                        warnings.append(CSmlWarning("Propagation count is 1, consider using 'C' instead for clarity.", dec.meta, code='replace-with-C'))
+        return warnings
 
     warnings = check_universal_rule(CSmlWarning, tree, "rule", ['loc', 'ins', 'expr', 'mem'])
     warnings += check_metavars_placeholders(CSmlException, CSmlWarning, tree, "rule", ['ins', 'expr', 'mem', 'dec'])
