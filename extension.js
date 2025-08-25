@@ -229,6 +229,15 @@ class QuickFixProvider {
           fix.isPreferred = true;
           actions.push(fix);
         }
+
+        else if (diagnostic.code === 'replace-with-*') {
+          const fix = new vscode.CodeAction("Replace with '*'", vscode.CodeActionKind.QuickFix);
+          fix.edit = new vscode.WorkspaceEdit();
+          fix.edit.replace(document.uri, diagnostic.range, '*');
+          fix.diagnostics = [diagnostic];
+          fix.isPreferred = true;
+          actions.push(fix);
+        }
       
     }
 

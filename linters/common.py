@@ -110,6 +110,10 @@ def check_metavars_placeholders(exception_class, warning_class, tree, rule_token
         for field in rule_fields:
             data = next(rule.find_data(field))
             update_lists(data, metavars, placeholders)
+            if 'expr' in field:
+                tokens = [t for t in data.scan_values(lambda t: True)]
+                if len(tokens) == 1 and 'DISTINGUISHED_PLACEHOLDER' in tokens[0].type:
+                    warnings.append(warning_class("Expression predicate simply matches the distinguished placeholder. Consider replacing with '*'.", data.meta, 'replace-with-*'))
 
         for key in metavars.keys():
             if key not in placeholders:
