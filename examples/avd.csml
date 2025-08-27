@@ -1,6 +1,6 @@
 * :: <?a> :: (?? with [!!, ??] : ?? <- ??) =< !a :: * -> C // concretize store address
 * :: <?a> :: (?? [!!, ??] : ??) =< !a :: * -> P[100]       // consider up to 100 address possibilities when loading
-* :: <ESP:imm<0x20> := ?a> :: <??> :: * -> P[!a]            // consider up to 2 (min and max) values for ESP 
+* :: <ESP:imm<0x20> := ?a> :: <!a> :: * -> P[!a]            // consider up to 2 (min and max) values for ESP 
 * :: <RSP:imm<0x40> := ?a> :: <!a> :: * -> P[2]            // and RSP too
 default -> P                                               // propagate all else
 // when storing, AVD concretized the address to a single possible value
