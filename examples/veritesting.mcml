@@ -1,0 +1,17 @@
+mc := 0
+
+// STATIC SECTION
+
+pattern A:
+* :: <jmp ??'??> :: * -> 0
+* :: <jmp ??> :: * -> 1
+default -> 0
+ // a low score is given to a location if there are no indirect jumps close to it
+
+pattern static:
+default -> q(A)
+
+// RUNTIME SECTION
+
+pattern runtime:
+default -> 0

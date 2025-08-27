@@ -1,3 +1,4 @@
+from copy import deepcopy
 import os
 import re
 from lark import Lark, Token, Tree, UnexpectedInput
@@ -110,9 +111,13 @@ def check_metavars_placeholders(exception_class, warning_class, tree, rule_token
         for field in rule_fields:
             data = next(rule.find_data(field))
             update_lists(data, metavars, placeholders)
-            tokens = [t for t in data.scan_values(lambda t: True)]
-            if len(tokens) == 1 and ('DISTINGUISHED_PLACEHOLDER' in tokens[0].type or 'ANONYMOUS_METAVAR' in tokens[0].type):
-                x = 'distinguished placeholder' if 'DISTINGUISHED_PLACEHOLDER' in tokens[0].type else 'anonymous metavar'
+            depth = 0
+            copy = deepcopy(data)
+            while isinstance(copy, Tree) and len(copy.children) > 0:
+                depth += 1
+                copy = copy.children[0]
+            if depth == 4 and isinstance(copy, Token) and ('DISTINGUISHED_PLACEHOLDER' in copy.type or 'ANONYMOUS_METAVAR' in copy.type):
+                x = 'distinguished placeholder' if 'DISTINGUISHED_PLACEHOLDER' in copy.type else 'anonymous metavar'
                 warnings.append(warning_class(f"Expression predicate simply matches the {x}. Consider replacing with '*'.", data.meta, 'replace-with-*'))
 
         for key in metavars.keys():
