@@ -12,5 +12,5 @@ Run `vsce package` on this folder, then:
 ```
 code --install-extension <generated-file>
 ```
-Requires `npm`, `python`, and `vsce` `(npm install -g vsce)` to build. 
+Requires `npm`, and `vsce` `(npm install -g vsce)` to build. 
 
