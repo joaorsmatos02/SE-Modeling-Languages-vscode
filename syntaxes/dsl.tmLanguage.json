@@ -45,7 +45,7 @@
 		  },
 		  {
 			"name": "entity.name.function.dsl",
-			"match": "\\b(?!if\\b)[a-zA-Z_][a-zA-Z0-9_]*\\b(?=\\s*\\()"
+			"match": "\\b(?!if\\b|special\\b|while\\b)[a-zA-Z_][a-zA-Z0-9_]*\\b(?=\\s*\\()"
 		  }
 		]
 	  }

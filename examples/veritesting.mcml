@@ -5,6 +5,7 @@ mc := 0
 pattern A:
 * :: <jmp ??'??> :: * -> 0
 * :: <jmp ??> :: * -> 1
+* :: <special(??)> :: * -> 1
 default -> 0
  // a low score is given to a location if there are no indirect jumps close to it
 
