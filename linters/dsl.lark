@@ -16,7 +16,7 @@ strict_subterm: strict_subterm "-<" exp_metavars_placeholders | subterm "-<" exp
 // we allow mixed chains of subterms and strict subterms which can contain both metavars (both types) and placeholders (both types)
 
 // memory functions can have placeholders (which replace the previous metavars)
-func: name "(" exp_placeholders ("," exp_placeholders)* ")" | wildcard
+func: name "(" [exp_placeholders ("," exp_placeholders)*] ")" | wildcard
 name: /[a-zA-Z_][a-zA-Z0-9_]*/
 
 num: hex | decimal
