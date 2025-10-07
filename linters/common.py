@@ -86,19 +86,19 @@ def check_metavars_placeholders(exception_class, warning_class, tree, rule_token
 
     def update_lists(tree, metavars, placeholders):
         this_metavars = []
-        for token in tree.scan_values(lambda t: 'NAMED_METAVAR' in t.type):
+        for token in tree.scan_values(lambda t: hasattr(t, 'type') and 'NAMED_METAVAR' in t.type):
             if token.value[1:] in metavars and token.value[1:] not in this_metavars:
                 raise exception_class(f"Meta-variable '{token.value}' is redefined.", token)
             metavars[token.value[1:]] = token
             this_metavars.append(token.value[1:])
-        for token in tree.scan_values(lambda t: 'NAMED_PLACEHOLDER' in t.type):
+        for token in tree.scan_values(lambda t: hasattr(t, 'type') and 'NAMED_PLACEHOLDER' in t.type):
             if token.value[1:] not in metavars.keys():
                 raise exception_class(f"Placeholder '{token.value}' is used before being defined.", token)
             if token.value[1:] in this_metavars:
                 raise exception_class(f"Meta-variable '?{token.value[1:]}' is defined and used as '!{token.value[1:]}' in the same predicate. Consider replacing with a meta-variable.", token, "replace-with-?")
             placeholders[token.value[1:]] = token
-        if not distinguished_ok and any(tree.scan_values(lambda t: 'DISTINGUISHED_PLACEHOLDER' in t.type)):
-            distinguished = next(tree.scan_values(lambda t: 'DISTINGUISHED_PLACEHOLDER' in t.type))
+        if not distinguished_ok and any(tree.scan_values(lambda t: hasattr(t, 'type') and 'DISTINGUISHED_PLACEHOLDER' in t.type)):
+            distinguished = next(tree.scan_values(lambda t: hasattr(t, 'type') and 'DISTINGUISHED_PLACEHOLDER' in t.type))
             raise exception_class(f"The distinguished placeholder can only be used if there is an expression predicate", distinguished)
 
     for rule in tree.find_data(rule_token):
@@ -116,8 +116,8 @@ def check_metavars_placeholders(exception_class, warning_class, tree, rule_token
             while isinstance(copy, Tree) and len(copy.children) > 0:
                 depth += 1
                 copy = copy.children[0]
-            if depth == 4 and isinstance(copy, Token) and ('DISTINGUISHED_PLACEHOLDER' in copy.type or 'ANONYMOUS_METAVAR' in copy.type):
-                x = 'distinguished placeholder' if 'DISTINGUISHED_PLACEHOLDER' in copy.type else 'anonymous metavar'
+            if depth == 4 and isinstance(copy, Token) and hasattr(copy, 'type') and ('DISTINGUISHED_PLACEHOLDER' in copy.type or 'ANONYMOUS_METAVAR' in copy.type):
+                x = 'distinguished placeholder' if hasattr(copy, 'type') and 'DISTINGUISHED_PLACEHOLDER' in copy.type else 'anonymous metavar'
                 warnings.append(warning_class(f"Expression predicate simply matches the {x}. Consider replacing with '*'.", data.meta, 'replace-with-*'))
 
         for key in metavars.keys():
@@ -127,10 +127,10 @@ def check_metavars_placeholders(exception_class, warning_class, tree, rule_token
     return warnings
 
 def check_subterms(exception_class, tree):
-    term_trees = list(tree.find_pred(lambda t: 'term' in t.data))
+    term_trees = list(tree.find_pred(lambda t: hasattr(t, 'data') and 'term' in t.data))
     if len(term_trees) != 0:
         rightmost = term_trees[-1].children[-1]
-        metavar = next(rightmost.scan_values(lambda t: 'METAVAR' in t.type), None) # FIXME
+        metavar = next(rightmost.scan_values(lambda t: hasattr(t, 'type') and 'METAVAR' in t.type), None) # FIXME
         if metavar:
             raise exception_class("The rightmost term can't have Metavars in a subexpression chain.", metavar)
         
@@ -138,10 +138,10 @@ def check_subterms(exception_class, tree):
             left = term_tree.children[0]
             while isinstance(left, Tree) and len(left.children) == 1:
                 left = left.children[0]
-            if isinstance(left, Token) and 'METAVAR' in left.type:
+            if isinstance(left, Token) and hasattr(left, 'type') and 'METAVAR' in left.type:
                 raise exception_class("No term can simply consist of a metavar.", left)
             right = term_tree.children[-1]
             while isinstance(right, Tree) and len(right.children) == 1:
                 right = right.children[0]
-            if isinstance(right, Token) and 'METAVAR' in right.type:
+            if isinstance(right, Token) and hasattr(right, 'type') and 'METAVAR' in right.type:
                 raise exception_class("No term can simply consist of a metavar.", right)
