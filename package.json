@@ -1,7 +1,8 @@
 {
   "name": "se-modeling-languages",
   "displayName": "SE Modeling Languages",
-  "description": "",
+  "description": "A pair of linters and syntax highlighters for symbolic execution modeling languages: CSml and MCml.",
+  "publisher": "JoaoMatos",
   "version": "0.0.1",
   "license": "MIT",
   "engines": {
