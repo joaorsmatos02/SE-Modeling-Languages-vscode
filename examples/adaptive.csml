@@ -1,0 +1,8 @@
+* :: * :: * :: after_one_min() -> C
+* :: <?a> :: (?? with [!!, ??] : ?? <- ??) =< !a :: * -> C
+* :: <?a> :: (?? [!!, ??] : ??) =< !a :: * -> P[100]
+* :: <ESP:imm<0x20> := ?a> :: <!a> :: * -> P[2]
+* :: <RSP:imm<0x40> := ?a> :: <!a> :: * -> P[2]
+default -> P
+
+// same as avd_default but after one minute concretizes everything
