@@ -3,7 +3,7 @@
   "displayName": "SE Modeling Languages",
   "description": "A pair of linters and syntax highlighters for symbolic execution modeling languages: CSml and MCml.",
   "publisher": "JoaoMatos",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "license": "MIT",
   "engines": {
     "vscode": "^1.98.2"
